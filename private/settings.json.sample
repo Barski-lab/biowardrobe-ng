@@ -24,7 +24,6 @@
     "staleSessionActivityEvents": "mousemove click keydown"
   },
   "uploadHome": "/tmp",
-  "encryptKey": "key",
   "oauth2server": {
     "clients":[
       {
