@@ -12,7 +12,7 @@
       {"email":"extra@user.com","pass":"mysecretpass"}
   ],
   "ldap": {
-    "url": "ldap://10.1.1.1:389",
+    "url": "ldap://192.168.1.1:389",
     "dc": "DC=DC1,DC=DOMAIN,DC=ORG",
     "dn": "cn=SRV,OU=SERVICE,DC=DC1,DC=DOMAIN,DC=ORG",
     "password": "password"
@@ -38,6 +38,20 @@
     "refreshTokenLifetime": null,
     "authCodeLifetime": 600,
     "domain": "mydomain.org"
-  }
+  },
+  "remotes": {
+      "filestorage": {
+        "loginUrl": "",
+        "viewListUrl": "",
+        "downloadUrl": "",
+        "caption": "",
+        "type": "files",
+        "collection": {
+          "name": "file_storage",
+          "nullConnection": false
+        },
+        "encryptKey": ""
+      }
+    }
 }
 
