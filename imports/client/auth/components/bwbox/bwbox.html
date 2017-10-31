@@ -1,0 +1,10 @@
+<div class="box-register">
+    <h3>{{title}}</h3><p>{{subtitle}}</p>
+    <form class="form-register">
+        <div class="alert alert-danger" *ngIf="alert">
+            <i class="fa fa-times"></i> You have some errors in the form. Please fix them.
+        </div>
+        <fieldset><ng-content></ng-content></fieldset>
+    </form>
+    <bw-copyright></bw-copyright>
+</div>

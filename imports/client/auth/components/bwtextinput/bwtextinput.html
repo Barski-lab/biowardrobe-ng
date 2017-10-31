@@ -1,0 +1,15 @@
+<div class="form-group" >
+            <span *ngIf="!!image" class="input-icon input-icon-gray">
+                <input type="{{bwControl.type}}" placeholder="{{bwControl.text}}"
+                       class="form-control"
+                       [class.password]="holder.childNodes.length!=0"
+                       [formControl]="bwControl"
+                       [bwFocus]="focus"
+                       [bwDisabled]="disabled"
+                       [bwReadOnly]="readonly"
+                ><i class="fa {{image}}"></i><div #holder ><ng-content select=".forgot"></ng-content></div></span>
+    <input *ngIf="!image" type="{{bwControl.type}}" placeholder="{{bwControl.text}}"
+           class="form-control" [formControl]="bwControl">
+    <label *ngIf="isInvalid()" class="error">
+        {{invalidMessage()}}</label>
+</div>

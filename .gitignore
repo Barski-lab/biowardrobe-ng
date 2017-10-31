@@ -1,0 +1,6 @@
+private/settings.json
+node_modules/
+._.DS_Store
+._settings.json
+.settings.json.swp
+.idea
