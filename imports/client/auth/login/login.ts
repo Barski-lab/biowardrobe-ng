@@ -2,22 +2,21 @@ import { Component, OnInit, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormControl, FormBuilder, FormGroup } from '@angular/forms';
 
+import { BWAuthBase } from '../auth.base'
 import { BWInputEmail, BWInputPassword, BWValidators } from '../../lib';
 import template from './login.html';
 
 import { swal } from 'sweetalert2';
 import '../../../../public/css/sweetalert2.css'
-const swal = require('sweetalert2');
+const swal = require('sweetalert2');  // maybe we don't need it?
 
 
 @Component({
     template
 })
-export class BWLogin implements OnInit {
-    loginForm: FormGroup;
+export class BWLogin extends BWAuthBase implements OnInit {
+    public loginForm: FormGroup;
     private params: any;
-    submitting:boolean = false;
-    showError;
 
     constructor (
         protected _fb:FormBuilder,
@@ -25,6 +24,7 @@ export class BWLogin implements OnInit {
         protected _router:Router,
         protected _zone: NgZone
     ) {
+        super();
         this.loginForm = _fb.group({
             email: new BWInputEmail('Email',true),
             password: new BWInputPassword('Password',true),
@@ -65,15 +65,6 @@ export class BWLogin implements OnInit {
         });
     }
 
-    isInvalid(comp):boolean {
-        if(comp && comp instanceof FormControl && comp.errors )
-            return !!this.showError && !!comp.errors;
-
-        if(comp && comp instanceof FormGroup)
-            return !!this.showError && !comp.valid;
-
-        return false;
-    }
 
     post(path, params) {
         let method = "post";

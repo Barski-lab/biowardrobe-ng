@@ -129,3 +129,19 @@ Accounts.onLogin(function (login) {
 
     Meteor.users.update({_id: login.user._id }, { $set: ou });
 });
+
+
+Accounts.emailTemplates.siteName = Meteor.settings['name'];
+Accounts.emailTemplates.from = Meteor.settings.email.from;
+
+Accounts['urls'] = _.extend(Accounts['urls'],{
+    resetPassword: function (token) {
+        return Meteor.settings.base_url+"reset/" + token;
+    }
+});
+
+Accounts.config(_.defaults({
+        forbidClientAccountCreation: true,
+        loginExpirationInDays: 7
+    },
+    Meteor.settings['accounts']));

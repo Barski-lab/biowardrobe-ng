@@ -3,16 +3,13 @@ import '../imports/server';
 
 Meteor.startup(() => {
     if(Meteor.settings['extra_users'].length>0) {
-        Meteor.settings['extra_users'].forEach( (u)=> {
-            let email = u.email.toLowerCase();
-            let user = Meteor.users.findOne({"emails.address": email});
-            if (!user) {
+        Meteor.settings['extra_users'].forEach( (email)=> {
+            let email = email.toLowerCase();
+            if (!Meteor.users.findOne({"emails.address": email})) {
                 Accounts.createUser({
                     email: email,
-                    password: u.pass
+                    password: Random.secret()
                 });
-            } else {
-                Accounts.setPassword(user._id, u.pass)
             }
         });
     }

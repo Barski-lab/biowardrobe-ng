@@ -1,0 +1,14 @@
+<bw-panel>
+    <bw-box
+            title="Forgot Password?"
+            subtitle="Enter your e-mail address below to reset your password"
+            [alert]="isInvalid(forgotForm)">
+        <bw-textinput [disabled]="submitting" [focus]="true" [image]="'fa-envelope'" [bwControl]="forgotForm.controls.email"></bw-textinput>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-blue pull-right" (click)="submit()"  >
+                Submit <i class="fa fa-arrow-circle-right"></i>
+            </button>
+            <a [routerLink]="['/login']" class="go-back">Back to Login</a>
+        </div>
+    </bw-box>
+</bw-panel>

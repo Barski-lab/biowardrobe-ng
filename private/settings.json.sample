@@ -1,15 +1,13 @@
 {
   "name": "BioWardrobe-NG",
   "logLevel": "debug",
-  "base_url": "https://biowardrobe.com/",
-  "rc_server": "http://localhost:3000/",
-  "rc_server_token": "XXX",
+  "base_url": "https://mydomain.com/",
   "email": {
     "url": "smtp://loginname:password@smtp.gmail.com:465/",
-    "from": "biowardrobe@biowardrobe.com"
+    "from": "user@mydomain.com"
   },
   "extra_users":[
-      {"email":"extra@user.com","pass":"mysecretpass"}
+      "extra@user.com"
   ],
   "ldap": {
     "url": "ldap://192.168.1.1:389",
@@ -18,7 +16,7 @@
     "password": "password"
   },
   "public":{
-    "staleSessionInactivityTimeout": 240000,
+    "staleSessionInactivityTimeout": 300000,
     "staleSessionHeartbeatInterval": 120000,
     "staleSessionPurgeInterval": 60000,
     "staleSessionActivityEvents": "mousemove click keydown"
@@ -27,16 +25,16 @@
   "oauth2server": {
     "clients":[
       {
-        "clientId": "abcd",
-        "clientSecret": "secretkey",
-        "redirectUri": "http://localhost:3000/_oauth/biowardrobe"
+        "clientId": "uniqueCliendId",
+        "clientSecret": "secretKey",
+        "redirectUri": "http://your-domain.com/path/for/oauth"
       }
     ],
     "grant_type": ["authorization_code", "refresh_token"],
     "accessTokenLifetime": 600,
     "refreshTokenLifetime": null,
     "authCodeLifetime": 600,
-    "domain": "mydomain.org"
+    "domain": "mydomain.com"
   },
   "remotes": {
       "filestorage": {
@@ -49,8 +47,12 @@
           "name": "file_storage",
           "nullConnection": false
         },
-        "encryptKey": ""
+        "encryptKey": "",
+        "auth":
+          {
+            "login": "yourLogin",
+            "pass": "yourPassword"
+          }
       }
     }
 }
-
