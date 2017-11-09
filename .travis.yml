@@ -10,6 +10,7 @@ cache:
 before_install:
   - curl https://install.meteor.com | /bin/sh
 before_script:
+  - meteor npm install typings --global
   - meteor npm install
 script: 
 #  - spacejam test-packages ./ --driver-package=practicalmeteor:mocha-console-runner
