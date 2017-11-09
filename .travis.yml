@@ -12,9 +12,9 @@ before_install:
   - npm install -g typings
 before_script:
   - npm install
-script: 
+script:
 #  - spacejam test-packages ./ --driver-package=practicalmeteor:mocha-console-runner
-  - meteor test
+  - meteor test --once --driver-package meteortesting:mocha
 
 sudo: required
 env:
