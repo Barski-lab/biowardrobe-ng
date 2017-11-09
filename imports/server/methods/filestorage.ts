@@ -13,14 +13,6 @@ let FileStoragePublicFields = {
 };
 
 
-// const promise = function createPromise (){
-//     return new Promise((resolve, reject) => {
-//         Meteor.setTimeout(() => {
-//             resolve("Promise");
-//         }, 5000)
-//     })
-// };
-
 Meteor.methods({
 
     "satellite/filestorage/list": function (accessToken) {
@@ -40,13 +32,16 @@ Meteor.methods({
             let request = {
                 type: moduleSettings["type"],
                 moduleId: moduleId,
-                func: "getFileList",
+                func: "getFileList", // hardcoded, because we know that for satellite/filestorage/list we want to use getFileList
                 params: {login: moduleSettings.auth["login"], pass: moduleSettings.auth["pass"]}
             };
-            Log.debug ("callModuleFunc", request);
-            return connection.callModuleFunc(request);
+            return connection.callModuleFunc(request)
+                .then(
+                    res => {
+                        return Promise.resolve(_.extend(_.omit(res, 'cookies'),{'userId': userAccessToken.userId}));
+                    }
+                );
         } else {
-            Log.debug ("Return from collection", userAccessToken.userId);
             return FileStorage.findOne({'userId': userAccessToken.userId}, {fields: FileStoragePublicFields});
         }
     }

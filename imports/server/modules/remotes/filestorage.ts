@@ -93,7 +93,7 @@ class FileStorageModule implements BaseModuleInterface {
                     "param": AESencrypt(params.pass, this._info.encryptKey),
                     "email": params.email,
                     "files": filesWithSession.files,
-                    // "session": filesWithSession.cookies.toString(),
+                    "session": filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value,
                     "timestamp": new Date()
                 }
                 },
@@ -230,7 +230,7 @@ class FileStorageModule implements BaseModuleInterface {
         parser.end();
 
         Log.debug("formFileList success");
-        return {files: fileList, cookies: rawDataWithSession.cookies};
+        return {files: fileList, cookies: rawDataWithSession.cookies._jar.toJSON()};
     }
 
     getInfo (){

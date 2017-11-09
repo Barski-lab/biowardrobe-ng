@@ -35,3 +35,7 @@ shell-server
 dynamic-import
 ostrio:aes-crypto
 zuuk:stale-session
+meteortesting:mocha
+practicalmeteor:chai
+practicalmeteor:mocha
+xolvio:cleaner

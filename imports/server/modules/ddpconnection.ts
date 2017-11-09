@@ -145,10 +145,13 @@ export class DDPConnection {
      * @returns {Promise<any>}
      */
     public callModuleFunc (request: {type: String, moduleId: String, func: String, params: any}){
-        var targetModule = _.find (DDPConnection._hooks[request.type], remoteModule => {return remoteModule.moduleId == request.moduleId});
-        var promiseFunc = targetModule ? targetModule.moduleFunction(request) : null;
-        if (!promiseFunc) throw new Meteor.Error("Module or function is not found", request);
-        return promiseFunc;
+        try {
+            var targetModule = _.find (DDPConnection._hooks[request.type], remoteModule => {return remoteModule.moduleId == request.moduleId});
+            let promiseFunction = targetModule.moduleFunction(request);
+        } catch (err){
+            throw new Meteor.Error("Module or target function is not found", err);
+        }
+        return promiseFunction;
     }
 
 

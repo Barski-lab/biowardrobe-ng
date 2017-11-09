@@ -2,10 +2,8 @@ import { Accounts } from 'meteor/accounts-base';
 import { LDAPClient } from './ldap';
 import { ReplaySubject } from 'rxjs';
 import undefined = Match.undefined;
-import { createLogger } from './logger';
+import { Log } from './logger';
 
-
-let Log = createLogger();
 
 export const passMonitor$:ReplaySubject<any> = new ReplaySubject<any>(null);
 
@@ -121,6 +119,24 @@ export function findOrCreateUser( _email, _pass, login?) {
     return Accounts._checkPassword(user, _pass);
 }
 
+/**
+ * Read array of extra_users (array of emails) from Meteor.settings and if current email
+ * is not assigned with any of the existent user, create the new user with current email
+ * and random password
+ */
+export function setExtraUsers (){
+    if(Meteor.settings['extra_users'] && Meteor.settings['extra_users'].length > 0) {
+        Meteor.settings['extra_users'].forEach( (email)=> {
+            let email = email.toLowerCase();
+            if (!Meteor.users.findOne({"emails.address": email})) {
+                Accounts.createUser({
+                    email: email,
+                    password: Random.secret()
+                });
+            }
+        });
+    }
+}
 
 Accounts.onLogin(function (login) {
     Log.debug('onLogin:',login.user._id,_.omit(login,["user","methodArguments"]));
@@ -131,17 +147,19 @@ Accounts.onLogin(function (login) {
 });
 
 
-Accounts.emailTemplates.siteName = Meteor.settings['name'];
-Accounts.emailTemplates.from = Meteor.settings.email.from;
+export function configAccounts(){
+    Accounts.emailTemplates.siteName = Meteor.settings['name'];
+    Accounts.emailTemplates.from = Meteor.settings.email.from;
 
-Accounts['urls'] = _.extend(Accounts['urls'],{
-    resetPassword: function (token) {
-        return Meteor.settings.base_url+"reset/" + token;
-    }
-});
+    Accounts['urls'] = _.extend(Accounts['urls'],{
+        resetPassword: function (token) {
+            return Meteor.settings.base_url+"reset/" + token;
+        }
+    });
 
-Accounts.config(_.defaults({
-        forbidClientAccountCreation: true,
-        loginExpirationInDays: 7
-    },
-    Meteor.settings['accounts']));
+    Accounts.config(_.defaults({
+            forbidClientAccountCreation: true,
+            loginExpirationInDays: 7
+        },
+        Meteor.settings['accounts']));
+}
