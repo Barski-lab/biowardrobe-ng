@@ -6,7 +6,7 @@ import { AuthRouting } from './auth.routing';
 import { BWAuthComponentsModule } from './components/bwauthcomponents.module';
 import { BWDirectivesModule } from '../lib';
 
-import { AccountService } from '../lib/accounts.service'
+import { ACCOUNTS_PROVIDERS } from '../lib/accounts.service'
 
 import { BWLogin }    from './login/login';
 import { BWLogout }   from './logout/logout';
@@ -38,7 +38,7 @@ import { BWLoggedIn } from './loggedin/loggedin';
         BWDirectivesModule
     ],
     providers: [
-        { provide: AccountService, useClass: AccountService }
+        ACCOUNTS_PROVIDERS
     ]
 })
 export class AuthModule {}

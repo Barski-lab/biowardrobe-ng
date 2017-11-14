@@ -1,25 +1,22 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 
-import { AccountService, BWInputEmail } from '../../lib';
-import { BWAuthBase } from '../auth.base'
+import { BWAccountService, BWInputEmail, BWComponentBase } from '../../lib';
 
 import template from './forgot.html'
 
 import swal from 'sweetalert2';
 import '../../../../public/css/sweetalert2.css'
-const swal = require('sweetalert2');  // maybe we don't need it?
 
 
 @Component({
     template
 })
-export class BWForgot extends BWAuthBase {
+export class BWForgot extends BWComponentBase {
     forgotForm: FormGroup;
 
-
     constructor (
-        protected _accounts: AccountService,
+        protected _accounts: BWAccountService,
         protected _fb:FormBuilder
     ) {
         super();
@@ -28,22 +25,28 @@ export class BWForgot extends BWAuthBase {
         });
     }
 
-
     submit() {
+        if(!this.checkSubmit()) return false;
         if (this.forgotForm.valid) {
-            this.submitting = true;
-            this._accounts.forgotPassword(this.forgotForm.controls["email"].value)
-                .then((o) => {
-                    swal({title: 'Email was sent.', text:'Please check your email box for future instructions.', type: 'success', timer: 5000});
-                }
-                ,(rej) => {
-                    if (rej.error == 401){
-                        swal({title: "Access denied", text:"You are not allowed to reset password", type: 'warning', timer: 5000});
-                    } else {
-                        swal({title: "Failed to reset password", text:"Make sure you set correct email", type: 'error', timer: 5000});
+            this.tracked = this._accounts.forgotPassword(this.forgotForm.controls["email"].value)
+                .subscribe(
+                    res => {
+                        // returns [error, result] as normal method call callback
+                        // [undefined, undefined] - success
+                        // [error, undefined] - failure
+                        let err = res[0];
+                        if (!err){
+                            swal({title: 'Email was sent.', text:'Please check your email box for future instructions.', type: 'success', timer: 5000});
+                        } else if (err.error == 401){
+                            swal({title: "Access denied", text:"You are not allowed to reset password", type: 'warning', timer: 5000});
+                        } else {
+                            swal({title: "Failed to reset password", text:"Make sure you set correct email", type: 'error', timer: 5000});
+                        }
+                    },
+                    err => {
+                        console.log (err)
                     }
-                }
-            );
+                );
         } else {
             this.showError=true;
         }
