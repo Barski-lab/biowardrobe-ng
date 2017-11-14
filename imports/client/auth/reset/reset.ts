@@ -2,22 +2,24 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { AccountService, BWValidators, BWInputPassword } from '../../lib';
-import { BWAuthBase } from '../auth.base'
+import { BWAccountService, BWValidators, BWInputPassword, BWComponentBase } from '../../lib';
 
 import template from './reset.html';
+
+import swal from 'sweetalert2';
+import '../../../../public/css/sweetalert2.css'
 
 @Component({
     template
 })
-export class BWReset extends BWAuthBase {
+export class BWReset extends BWComponentBase {
     token:string;
     resetForm: FormGroup;
 
     constructor(
         protected _router:Router,
         protected _route:ActivatedRoute,
-        protected _accounts: AccountService,
+        protected _accounts: BWAccountService,
         protected _fb:FormBuilder
 
     ) {
@@ -33,15 +35,18 @@ export class BWReset extends BWAuthBase {
     }
     
     submit() {
+        if(!this.checkSubmit()) return false;
         if (this.resetForm.valid) {
-            this.submitting = true;
-            this._accounts.resetPassword(this.token, this.resetForm.controls["password"].value).then((o) => {
-                    console.log(o);
-                    this._router.navigate(['/platform']);
-                },(rej) => {
-                    console.log(rej);
-                }
-            );
+            this.tracked = this._accounts.resetPassword(this.token, this.resetForm.controls["password"].value)
+                .subscribe(
+                    res => {
+                        // return undefined - success or Object.error - failed
+                        !!res? swal({title: "Failed to reset password", text:res.reason, type: 'error', timer: 5000}) : this._router.navigate(['/platform']);
+                    },
+                    err => {
+                        console.log(err);
+                    }
+                );
         } else {
             this.showError=true;
         }

@@ -129,9 +129,10 @@ export function setExtraUsers (){
         Meteor.settings['extra_users'].forEach( (email)=> {
             let email = email.toLowerCase();
             if (!Meteor.users.findOne({"emails.address": email})) {
+                let pass = Random.secret();
                 Accounts.createUser({
                     email: email,
-                    password: Random.secret()
+                    password: pass
                 });
             }
         });

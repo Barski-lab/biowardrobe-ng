@@ -1,9 +1,6 @@
 import { Mongo } from 'meteor/mongo';
 const path = require('path');
 
-
-export var FileStorage: any;
-
 export function getCollectionParams (moduleId: string, collectionNameDefault: string, nullConnectionDefault: boolean){
     if (   Meteor.settings
         && Meteor.settings.remotes
@@ -19,8 +16,7 @@ export function getCollectionParams (moduleId: string, collectionNameDefault: st
 
 let collectionParams = getCollectionParams (path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf(".")), "file_storage", false);
 
-FileStorage = collectionParams.nullConnection ? new Mongo.Collection(collectionParams.name, {"connection": null}) : new Mongo.Collection(collectionParams.name);
-
+export const FileStorage: any = collectionParams.nullConnection ? new Mongo.Collection(collectionParams.name, {"connection": null}) : new Mongo.Collection(collectionParams.name);
 
 FileStorage.deny({
     insert: function () {
