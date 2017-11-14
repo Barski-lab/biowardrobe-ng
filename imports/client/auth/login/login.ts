@@ -1,20 +1,17 @@
 import { Component, OnInit, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormControl, FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormGroup } from '@angular/forms';
 
-import { BWAuthBase } from '../auth.base'
-import { BWInputEmail, BWInputPassword, BWValidators } from '../../lib';
+import { BWInputEmail, BWInputPassword, BWValidators, BWComponentBase, BWAccountService } from '../../lib';
 import template from './login.html';
 
-import { swal } from 'sweetalert2';
+import swal from 'sweetalert2';
 import '../../../../public/css/sweetalert2.css'
-const swal = require('sweetalert2');  // maybe we don't need it?
-
 
 @Component({
     template
 })
-export class BWLogin extends BWAuthBase implements OnInit {
+export class BWLogin extends BWComponentBase implements OnInit {
     public loginForm: FormGroup;
     private params: any;
 
@@ -22,7 +19,8 @@ export class BWLogin extends BWAuthBase implements OnInit {
         protected _fb:FormBuilder,
         protected _route:ActivatedRoute,
         protected _router:Router,
-        protected _zone: NgZone
+        protected _zone: NgZone,
+        protected _accounts: BWAccountService,
     ) {
         super();
         this.loginForm = _fb.group({
@@ -43,8 +41,6 @@ export class BWLogin extends BWAuthBase implements OnInit {
                     this.loginForm.controls['email'].setValue(localStorage.getItem('corporateEmail'), {emitEvent: false});
                 }
             }
-
-            Meteor.subscribe('authorizedOAuth');
 
             Tracker.autorun((c) => {
                 let user = Meteor.user();
@@ -88,21 +84,23 @@ export class BWLogin extends BWAuthBase implements OnInit {
     }
 
     submit() {
-        let self = this;
+        if(!this.checkSubmit()) return false;
         if (this.loginForm.valid) {
-            this.submitting = true;
             localStorage.setItem('corporateEmail', this.loginForm.controls['email'].value);
-            Accounts.callLoginMethod({
-                methodArguments: [{email: this.loginForm.controls['email'].value, pass: this.loginForm.controls['password'].value, biowardrobeng: true }],
-                userCallback: (e) => {
-                    self._zone.run(()=>{
-                        self.submitting = false;
-                    });
-                    if(e)
-                        swal({title: 'Incorrect credentials.',text: e.reason, type: 'error', timer: 4000});
-                }
-            });
+            this.tracked = this._accounts.login(this.loginForm.controls['email'].value, this.loginForm.controls['password'].value)
+                .subscribe(
+                    res => {
+                        // return undefined - success or Object.error - failed
+                        !!res && swal({title: 'Incorrect credentials', text: res.reason, type: 'error', timer: 5000});
+                    },
+                    err => {
+                        console.log (err)
+                    }
+                );
+        } else {
+            this.showError=true; // Why do we need this showError at all?
         }
+        this.submitting = false; // Check is we need it end do we really display its changes, do we need to add zone.run?
     }
 
 }
