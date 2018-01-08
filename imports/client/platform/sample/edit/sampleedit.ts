@@ -83,7 +83,7 @@ export class BWSampleEdit extends BWComponentBase implements AfterViewInit {
             .subscribe((v) => {
                 if(this._cwlSelectForm.controls['cwlId'].valid && !this._cwlSelectForm.controls['cwlId'].pristine){
                     this._cwlSelectForm.controls['cwlId'].markAsPristine();
-                    this.tracked = MeteorObservable.call("drafts/reset","cwlform", {})
+                    this.tracked = this.MeteorCall("drafts/reset","cwlform", {})
                         .subscribe(
                             (res) => console.log(res),
                             (err) => console.log(err)
@@ -104,7 +104,7 @@ export class BWSampleEdit extends BWComponentBase implements AfterViewInit {
                 metadata: e.data.metadata
             };
             console.log("cwlFormValueChanges drafts/upsert", cwlFormData);
-            this.tracked = MeteorObservable.call("drafts/upsert","cwlform", cwlFormData)
+            this.tracked = this.MeteorCall("drafts/upsert","cwlform", cwlFormData)
                 .subscribe(
                     (res) => console.log(res),
                     (err) => console.log(err)
@@ -114,23 +114,21 @@ export class BWSampleEdit extends BWComponentBase implements AfterViewInit {
 
 
     private submit() {
-        // if(!this.checkSubmit()) return false;
-        // if (this._cwlFormService.formGroupMetadata.valid && this._cwlFormService.formValid()) {
-        //     this._sample.addSampleTransfer()
-        //         .then(
-        //             (o) => {
-        //                 this._showError=false;
-        //                 console.log("Ok:",o);
-        //                 this._router.navigate(['/platform/sample', {project_id: this.project_id, sample_id: o}], {replaceUrl:true});
-        //             },
-        //             (e) => {
-        //                 console.log("Error:",e);
-        //             }
-        //         );
-        // } else {
-        //     this._showError=true;
-        // }
-        // this._submitting = false;
+        if(!this.checkSubmit()) return false;
+        if (this._cwlService.formValid()) {
+            this._sample.addSample().subscribe(
+                (sampleId) => {
+                    this._showError=false;
+                    console.log("Added sample:",sampleId);
+                    this._router.navigate(['/platform/sample', {sample_id: sampleId}], {replaceUrl:true});
+                },
+                (err) => {
+                    console.log("Error:",err);
+                })
+        } else {
+            this.showError = true;
+            console.log("_cwlService.formGroup is not valid");
+        }
+        this.submitting = false;
     }
-
 }

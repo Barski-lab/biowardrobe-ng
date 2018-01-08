@@ -43,7 +43,7 @@ export class BWServiceBase extends BWTracking {
     }
 
     formValid():boolean {
-        return this.formGroup.valid;
+        return this.formGroup && this.formGroup.valid;
     }
 
     getForm():FormGroup {

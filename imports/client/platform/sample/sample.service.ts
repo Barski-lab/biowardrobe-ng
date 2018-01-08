@@ -21,7 +21,7 @@ export class BWSampleService extends BWServiceBase {
     }
 
     public addSample (){
-        // return this.promiseCall("samples/create");  // TODO
+        return this.MeteorCall("samples/create");
     }
 
 
