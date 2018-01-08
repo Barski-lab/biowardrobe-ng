@@ -4,7 +4,7 @@
             <mat-toolbar>
                 <span flex-auto></span>
                 <button matTooltip="Back" mat-mini-fab (click)="_location.back()"><mat-icon>arrow_back</mat-icon></button>&nbsp;
-                <button matTooltip="Save" mat-mini-fab *ngIf="sample_id=='new'" (click)="submit()" >
+                <button matTooltip="Save" mat-mini-fab *ngIf="_sampleId=='new'" (click)="submit()" >
                     <mat-icon>save</mat-icon>
                 </button>
             </mat-toolbar>
