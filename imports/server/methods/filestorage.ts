@@ -1,7 +1,8 @@
 import { Meteor } from 'meteor/meteor';
 import { check } from 'meteor/check';
 
-import { FileStorage, AccessTokens } from '../../collections';
+import { FileStorage } from '../../collections/shared';
+import { AccessTokens } from '../../collections/server';
 import { Log } from '../modules/logger';
 import { connection } from '../modules/ddpconnection';
 

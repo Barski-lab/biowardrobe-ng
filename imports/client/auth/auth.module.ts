@@ -1,17 +1,15 @@
-import { NgModule } from '@angular/core';
+import { NgModule, ModuleWithProviders } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 import { AuthRouting } from './auth.routing';
 import { BWAuthComponentsModule } from './components/bwauthcomponents.module';
-import { BWDirectivesModule } from '../lib';
-
-import { ACCOUNTS_PROVIDERS } from '../lib/accounts.service'
+import { BWDirectivesModule, BWAccountService } from '../lib';
 
 import { BWLogin }    from './login/login';
 import { BWLogout }   from './logout/logout';
 import { BWForgot }   from './forgot/forgot';
-import { BWReset }   from './reset/reset';
+import { BWReset }    from './reset/reset';
 import { BWLoggedIn } from './loggedin/loggedin';
 
 
@@ -36,9 +34,17 @@ import { BWLoggedIn } from './loggedin/loggedin';
         AuthRouting,
         BWAuthComponentsModule,
         BWDirectivesModule
-    ],
-    providers: [
-        ACCOUNTS_PROVIDERS
     ]
 })
-export class AuthModule {}
+
+// If we want to import module with all injected services, use AuthModule.forRoot()
+// In case we need only components to be imported, we can avoid creating new instances of services, each time we import this
+// module, by importing only AuthModule
+export class AuthModule {
+    static forRoot(): ModuleWithProviders {
+        return {
+            ngModule: AuthModule,
+            providers: [BWAccountService]
+        }
+    }
+}
