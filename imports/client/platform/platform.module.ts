@@ -1,10 +1,15 @@
-import { NgModule } from '@angular/core';
+import { NgModule, ModuleWithProviders } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
-import { PlatformRouting } from './platform.routing';
-import { BWPlatformComponentsModule } from '../platform/components/bwplatformcomponents.module'
 import { BWPlatform } from './platform';
+import { PlatformRouting } from './platform.routing';
+
+import { BWDraftService } from '../lib'
+
+import { BWPlatformComponentsModule } from './components/bwplatformcomponents.module'
+import { SampleModule } from './sample/sample.module'
+import { CWLModule } from './cwl/cwl.module'
 
 
 @NgModule({
@@ -18,7 +23,19 @@ import { BWPlatform } from './platform';
         CommonModule,
         ReactiveFormsModule,
         PlatformRouting,
-        BWPlatformComponentsModule
+        BWPlatformComponentsModule,
+        SampleModule.forRoot(),        // Note, we called with forRoot to include providers
+        CWLModule.forRoot()            // Note, we called with forRoot to include providers
     ]
 })
-export class PlatformModule {}
+// If we want to import module with all injected services, use PlatformModule.forRoot()
+// In case we need only components to be imported, we can avoid creating new instances of services, each time we import this
+// module, by importing only PlatformModule
+export class PlatformModule {
+    static forRoot(): ModuleWithProviders {
+        return {
+            ngModule: PlatformModule,
+            providers: [BWDraftService]
+        }
+    }
+}

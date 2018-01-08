@@ -1,0 +1,45 @@
+<mat-tab-group [(selectedIndex)]="activeTab" *ngIf="_cwlService.formTemplateGeneral.length > 0">
+    <mat-tab label="General Info">
+        <div layout="column" class="push-top push-bottom push-left-sm" *ngFor="let e of _cwlService.formTemplateMetadata" [ngSwitch]="e.type">
+            <bw-textinput *ngSwitchDefault
+                          [bwControl]="_cwlService.formGroupMetadata.controls[e.key]"
+                          class="full-width">
+            </bw-textinput>
+            <mat-slide-toggle *ngSwitchCase="'boolean'"
+                              [formControl]="_cwlService.formGroupMetadata.controls[e.key]"
+                              class="full-width">
+                {{_cwlService.formGroupMetadata.controls[e.key]?.text}}
+            </mat-slide-toggle>
+        </div>
+
+        <div layout="column" class="push-top push-bottom push-left-sm" *ngFor="let e of _cwlService.formTemplateGeneral" [ngSwitch]="e.type">
+            <bw-textinput *ngSwitchDefault
+                          [bwControl]="_cwlService.formGroupInputs.controls[e.key]"
+                          class="full-width">
+            </bw-textinput>
+
+            <mat-slide-toggle *ngSwitchCase="'boolean'"
+                              [formControl]="_cwlService.formGroupInputs.controls[e.key]"
+                              class="full-width">
+                {{_cwlService.formGroupInputs.controls[e.key]?.text}}
+            </mat-slide-toggle>
+            <!--<ng-template [ngSwitchCase]="'File'">-->
+                <!--<sd-upload-panel *ngIf="_allowUpload && !!_ddp && !!_ddp.status && _ddp.status.connected && !!_filesCollection" [fileCollection]="_filesCollection"></sd-upload-panel>-->
+                <!--<sd-list-dnacore *ngIf="_allowUpload && !!_ddp && !!_ddp.status && _ddp.status.connected" [ddp]="_ddp"></sd-list-dnacore>-->
+            <!--</ng-template>-->
+        </div>
+    </mat-tab>
+    <mat-tab label="Advanced">
+        <div layout="column" class="push-top push-bottom push-left-sm" *ngFor="let e of _cwlService.formTemplateAdvanced" [ngSwitch]="e.type">
+            <bw-textinput *ngSwitchDefault
+                          [bwControl]="_cwlService.formGroupInputs.controls[e.key]"
+                          class="full-width">
+            </bw-textinput>
+
+            <mat-slide-toggle *ngSwitchCase="'boolean'"
+                              [formControl]="_cwlService.formGroupInputs.controls[e.key]" class="full-width">
+                {{_cwlService.formGroupInputs.controls[e.key]?.text}}
+            </mat-slide-toggle>
+        </div>
+    </mat-tab>
+</mat-tab-group>
