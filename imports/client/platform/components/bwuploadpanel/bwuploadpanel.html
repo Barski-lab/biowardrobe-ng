@@ -1,0 +1,60 @@
+<h5 class="panel-title">{{sectionTitle}}</h5>
+<!-- Step States: 0 - Pick File, 1 - Confirm Pick, 2 - Uploading, 3 - Done, 4 - Error-->
+<div class="panel-container">
+    <div layout="row" layout-align="start center" class="button-panel">
+
+        <!--PICK FILE-->
+        <!--Upload Button and FileName-->
+        <td-file-input (select)="prepareFile($event)" [disabled]="checkStatus([2,3])"
+                       (upload)="startUpload($event)" (cancel)="pickNewFile()" color="primary">
+
+                <img src="/images/static_white_gear.gif" class="image-to-icon"
+                     [class.rotate-gear-animation] = "checkStatus([2])"/>
+                <span>{{currentFileName}}</span>
+                <span *ngIf="checkStatus([1])">({{getFileSizeString(currentFile.size)}})</span>
+
+        </td-file-input>
+        <!--CONFIRM UPLOAD-->
+        <!--Start Upload-->
+        <button mat-icon-button color="accent" *ngIf="checkStatus([0,1])"
+                matTooltip="Start Upload" [matTooltipShowDelay]="tooltipDelay"
+                (click) ="startUpload()" [disabled]="!checkStatus([1])">
+
+            <i class="material-icons">check_circle</i>
+
+        </button>
+        <!--Pick New File-->
+        <button mat-icon-button color="accent" *ngIf="checkStatus([0,1,4])"
+                matTooltip="Pick Another File" [matTooltipShowDelay]="tooltipDelay"
+                (click) ="pickNewFile()" [disabled]="!checkStatus([1,4])">
+
+            <i class="material-icons">attach_file</i>
+
+        </button>
+
+        <!--UPLOADING-->
+        <!--Cancel Upload Button-->
+        <button mat-icon-button *ngIf="checkStatus([2])"
+                color="warn" matTooltip="Stop Upload"
+                [matTooltipShowDelay]="tooltipDelay" (click) ="cancelUpload()">
+
+            <i class="material-icons">cancel</i>
+
+        </button>
+        <!--Upload Progress-->
+        <span *ngIf="checkStatus([2])">Upload Progress: {{loadProgress}}% --- ({{loadFraction}})</span>
+        <span *ngIf="checkStatus([3])" class='success'>&nbsp;Done! </span>
+        <span *ngIf="checkStatus([4])" class='warn'>{{errorMessage}}</span>
+
+        <!--Invisible Button to keep alignment consistant-->
+        <!--TODO: Figure out why buttons don't play nice with flex-->
+        <button mat-icon-button [disabled]="true">&nbsp;</button>
+    </div>
+    <!--Progress Bar-->
+    <mat-progress-bar class="upload-progress" mode="determinate"
+                     [value]="loadProgress" [color]="barColor"
+                     *ngIf="checkStatus([2,3,4])"></mat-progress-bar>
+
+
+</div>
+

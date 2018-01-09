@@ -5,6 +5,7 @@ import { OverlayModule } from '@angular/cdk/overlay';
 
 import { BWTextInput } from './bwtextinput.component';
 
+import { BWUploadPanelModule } from './bwuploadpanel/bwuploadpanel.module';
 
 import {
     MatSelectModule,
@@ -30,8 +31,9 @@ import {
     MatToolbarModule,
     MatSliderModule,
     MatSlideToggleModule,
-    MatExpansionModule
-
+    MatExpansionModule,
+    MatRippleModule,
+    MatCommonModule
 } from '@angular/material';
 
 import {
@@ -77,7 +79,9 @@ const MATERIAL_MODULES:Array<any> = [
     MatSliderModule,
     MatSlideToggleModule,
     MatExpansionModule,
-    OverlayModule
+    OverlayModule,
+    MatRippleModule,
+    MatCommonModule
 ];
 
 
@@ -102,6 +106,10 @@ const BW_COMPONENTS:Array<any> = [
     BWTextInput
 ];
 
+const BW_MODULES:Array<any> = [
+    BWUploadPanelModule
+];
+
 @NgModule({
     declarations: [
         BW_COMPONENTS
@@ -109,13 +117,15 @@ const BW_COMPONENTS:Array<any> = [
     exports: [
         COVALENT_MODULES,
         MATERIAL_MODULES,
+        BW_MODULES,
         BW_COMPONENTS
     ],
     imports: [
         CommonModule,
         ReactiveFormsModule,
         COVALENT_MODULES,
-        MATERIAL_MODULES
+        MATERIAL_MODULES,
+        BW_MODULES
     ]
 })
 export class BWPlatformComponentsModule {}
