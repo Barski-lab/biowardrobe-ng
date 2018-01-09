@@ -21,7 +21,7 @@
     "staleSessionPurgeInterval": 60000,
     "staleSessionActivityEvents": "mousemove click keydown"
   },
-  "uploadHome": "/tmp",
+  "uploadDirectory": "/tmp",
   "oauth2server": {
     "clients":[
       {

@@ -1,5 +1,5 @@
 export * from './cwls'
 export * from './drafts'
-export * from './files'
+export * from './filesupload'
 export * from './filestorage'
 export * from './samples'

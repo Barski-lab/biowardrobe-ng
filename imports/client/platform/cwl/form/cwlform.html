@@ -23,10 +23,10 @@
                               class="full-width">
                 {{_cwlService.formGroupInputs.controls[e.key]?.text}}
             </mat-slide-toggle>
-            <!--<ng-template [ngSwitchCase]="'File'">-->
-                <!--<sd-upload-panel *ngIf="_allowUpload && !!_ddp && !!_ddp.status && _ddp.status.connected && !!_filesCollection" [fileCollection]="_filesCollection"></sd-upload-panel>-->
+            <ng-template [ngSwitchCase]="'File'">
+                <bw-uploadpanel *ngIf="_allowUpload" [fileCollection]="_cwlService.getFilesUploadCollection()"></bw-uploadpanel>
                 <!--<sd-list-dnacore *ngIf="_allowUpload && !!_ddp && !!_ddp.status && _ddp.status.connected" [ddp]="_ddp"></sd-list-dnacore>-->
-            <!--</ng-template>-->
+            </ng-template>
         </div>
     </mat-tab>
     <mat-tab label="Advanced">
