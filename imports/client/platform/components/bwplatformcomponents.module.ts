@@ -6,6 +6,8 @@ import { OverlayModule } from '@angular/cdk/overlay';
 import { BWTextInput } from './bwtextinput.component';
 import { BWTreeView } from './bwtreeview.component';
 import { BWCloudLoader } from './bwcloudloader.component';
+import { BWCloudLoaderDialog } from './bwcloudloaderdialog.component';
+import { BWCloudLoaderButton } from './bwcloudloaderbutton.component';
 
 import { BWUploadPanelModule } from './bwuploadpanel/bwuploadpanel.module';
 
@@ -107,7 +109,9 @@ const COVALENT_MODULES:Array<any> = [
 const BW_COMPONENTS:Array<any> = [
     BWTextInput,
     BWTreeView,
-    BWCloudLoader
+    BWCloudLoader,
+    BWCloudLoaderDialog,
+    BWCloudLoaderButton
 ];
 
 const BW_MODULES:Array<any> = [
@@ -130,6 +134,9 @@ const BW_MODULES:Array<any> = [
         COVALENT_MODULES,
         MATERIAL_MODULES,
         BW_MODULES
+    ],
+    entryComponents: [
+        BWCloudLoaderDialog  //  Need to list it here, because we create it dynamically
     ]
 })
 export class BWPlatformComponentsModule {}
