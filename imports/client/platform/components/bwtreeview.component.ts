@@ -5,7 +5,7 @@ import {
     EventEmitter
 } from '@angular/core';
 import { NgClass } from '@angular/common';
-
+import { BWComponentBase } from '../../lib'
 
 @Component({
     selector: 'bw-treeview',
@@ -67,8 +67,9 @@ import { NgClass } from '@angular/common';
     ]
 
 })
-export class BWTreeView {
-    @Input() directories: Array = [];
+
+export class BWTreeView extends BWComponentBase {
+    @Input() directories = [];
 
     // Mandatory fields: name, type
     // type could be "file" or "folder"
