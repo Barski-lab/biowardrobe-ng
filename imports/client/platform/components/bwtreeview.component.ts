@@ -129,6 +129,12 @@ export class BWTreeView extends BWComponentBase {
     private _prevent = false;
 
 
+    constructor(
+    ) {
+        super();
+    }
+
+
     itemDoubleClick (payload){
         clearTimeout(this._timer);
         this._prevent = true;

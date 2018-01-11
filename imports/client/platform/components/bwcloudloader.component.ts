@@ -4,6 +4,7 @@ import {
     Output,
     EventEmitter
 } from '@angular/core';
+
 import { BWComponentBase } from '../../lib'
 
 
@@ -53,8 +54,12 @@ export class BWCloudLoader extends BWComponentBase{
     @Output() openItem:       EventEmitter<any> = new EventEmitter();
     @Output() previewItem:    EventEmitter<any> = new EventEmitter();
 
-    private _selectedItems: Array = [];
+    private _selectedItems = [];
 
+    constructor(
+    ) {
+        super();
+    }
 
     submit(){
         this.submittedItems.emit (this._selectedItems);
@@ -82,6 +87,7 @@ export class BWCloudLoader extends BWComponentBase{
             this.directories[i].checked = false;
             this.checkRecursive(this.directories[i], false);
         }
+        this._selectedItems = [];
         this.selectedItems.emit([]);
         $event.stopPropagation();
     }
