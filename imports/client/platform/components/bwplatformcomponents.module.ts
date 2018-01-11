@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { OverlayModule } from '@angular/cdk/overlay';
 
 import { BWTextInput } from './bwtextinput.component';
+import { BWTreeView } from './bwtreeview.component';
 
 import { BWUploadPanelModule } from './bwuploadpanel/bwuploadpanel.module';
 
@@ -103,7 +104,8 @@ const COVALENT_MODULES:Array<any> = [
 ];
 
 const BW_COMPONENTS:Array<any> = [
-    BWTextInput
+    BWTextInput,
+    BWTreeView
 ];
 
 const BW_MODULES:Array<any> = [
