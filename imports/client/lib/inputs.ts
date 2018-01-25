@@ -53,6 +53,10 @@ export class BWInputText extends BWInput {
     type = 'text';
 }
 
+export class BWInputNumber extends BWInput {
+    type = 'number';
+}
+
 export class BWInputCheckbox extends BWInput {
     type = 'checkbox';
     constructor(
@@ -126,4 +130,13 @@ export class BWInputGroup extends FormGroup {
     }
 }
 
-export const BW_CONTROLS:Array<any> = [BWInput, BWInputEmail, BWInputImage, BWInputPassword, BWInputText, BWInputArray, BWInputGroup];
+export const BW_CONTROLS:Array<any> = [ BWInput,
+                                        BWInputEmail,
+                                        BWInputText,
+                                        BWInputNumber,
+                                        BWInputCheckbox,
+                                        BWInputSpinnerText,
+                                        BWInputPassword,
+                                        BWInputImage,
+                                        BWInputArray,
+                                        BWInputGroup];

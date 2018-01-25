@@ -1,6 +1,7 @@
 import { Meteor } from 'meteor/meteor';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+
 import { BWServiceBase } from './service.base';
 
 
@@ -32,8 +33,3 @@ export class BWAccountService extends BWServiceBase {
     }
 
 }
-
-
-export const ACCOUNTS_PROVIDERS: Array<any> = [
-    { provide: BWAccountService, useClass: BWAccountService }
-];

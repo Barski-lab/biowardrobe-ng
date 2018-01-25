@@ -1,0 +1,34 @@
+<div flex-gt-md="60">
+    <mat-card>
+        <mat-card-content>
+            <mat-toolbar>
+                <span flex-auto></span>
+                <button matTooltip="Back" mat-mini-fab (click)="_location.back()"><mat-icon>arrow_back</mat-icon></button>&nbsp;
+                <button matTooltip="Save" mat-mini-fab *ngIf="_sampleId=='new'" (click)="submit()" >
+                    <mat-icon>save</mat-icon>
+                </button>
+            </mat-toolbar>
+            <div class="push-bottom-sm">&nbsp;</div>
+
+            <div layout="column">
+                <form #cwlSelectForm="ngForm">
+                    <mat-form-field>
+                        <mat-select [disabled]="_allowUpload" name="cwlId" placeholder="CWL workflow to run" ngModel>
+                            <mat-option *ngFor="let cwl of _cwls" [value]="cwl._id">
+                                {{ cwl.description.label }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </form>
+            </div>
+
+            <bw-cwlform class="push-top"
+                        [cwlData]="_cwlData"
+                        [cwlFormData]="_cwlFormData"
+                        [allowUpload]="_allowUpload"
+                        (valueChanges)="cwlFormValueChanges($event)">
+            </bw-cwlform>
+
+        </mat-card-content>
+    </mat-card>
+</div>

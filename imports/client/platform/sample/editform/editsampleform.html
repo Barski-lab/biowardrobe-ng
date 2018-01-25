@@ -1,0 +1,4 @@
+<div layout="column">
+    <sd-select [sdControl]="sdControl" [options]="_cwlList"></sd-select>
+    <sd-cwl-form class="push-top" [cwlData]="_cwlData" (valueChanges)="getData($event)" [cwlFormData]="_cwlFormData" [allowUpload]="_allowUpload"></sd-cwl-form>
+</div>
