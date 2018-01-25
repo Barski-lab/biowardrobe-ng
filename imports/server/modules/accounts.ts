@@ -130,6 +130,7 @@ export function setExtraUsers (){
             let email = email.toLowerCase();
             if (!Meteor.users.findOne({"emails.address": email})) {
                 let pass = Random.secret();
+                // Log.debug ("pass", pass);
                 Accounts.createUser({
                     email: email,
                     password: pass

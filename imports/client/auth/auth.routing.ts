@@ -8,7 +8,7 @@ import { BWReset }   from './reset/reset';
 import { BWLoggedIn } from './loggedin/loggedin';
 
 
-export const AuthRouting: ModuleWithProviders = RouterModule.forRoot([
+export const AuthRouting: ModuleWithProviders = RouterModule.forChild([ // only gives the router components (doesn't provide again the services of forRoot)
     { path: 'login', component: BWLogin },
     { path: 'oauth/authorize', component: BWLogin },
     { path: 'oauth/logout', component: BWLogout },

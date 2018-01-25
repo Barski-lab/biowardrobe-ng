@@ -1,5 +1,5 @@
 import { Log } from '../logger';
-import { AccessTokens, RefreshTokens, AuthCodes } from '../../../collections';
+import { AccessTokens, RefreshTokens, AuthCodes } from '../../../collections/server';
 
 
 export class oauth2Model {

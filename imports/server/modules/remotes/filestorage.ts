@@ -2,7 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { AESencrypt, AESdecrypt } from 'meteor/ostrio:aes-crypto';
 
 import { Log } from '../logger';
-import { FileStorage } from '../../../collections';
+import { FileStorage } from '../../../collections/shared';
 import { moduleLoader } from './moduleloader';
 import { BaseModuleInterface } from './base.module.interface';
 import { passMonitor$ } from '../accounts';

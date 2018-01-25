@@ -9,10 +9,15 @@ import { HttpModule } from '@angular/http';
 
 import { AppComponent } from './app/app.component';
 import { AppRouting } from './app.routing';
+
 import { AuthModule } from '../auth/auth.module';
-import { BWPlatformComponentsModule } from '../platform/components/bwplatformcomponents.module'
 import { PlatformModule } from '../platform/platform.module'
 
+
+// Call forRoot to import module with all its services (include providers).
+// It's preferable to import module with services in the module, where we
+// first need this service to be used. Note, after import this service
+// becomes available globally in absolutely all modules.
 
 @NgModule({
     imports: [
@@ -25,9 +30,8 @@ import { PlatformModule } from '../platform/platform.module'
         Ng2BootstrapModule,
         AppRouting,
         HttpModule,
-        AuthModule,
-        BWPlatformComponentsModule,
-        PlatformModule
+        AuthModule.forRoot(),       // Note, we called forRoot() to import providers too
+        PlatformModule.forRoot()    // Note, we called forRoot() to import providers too
     ],
     declarations: [AppComponent],
     bootstrap: [AppComponent]
