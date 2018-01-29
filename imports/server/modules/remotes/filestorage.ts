@@ -90,7 +90,8 @@ class FileStorageModule implements BaseModuleInterface {
                 {"userId": params.userId},
                 { $set: {
                     "login": params.login,
-                    "param": AESencrypt(params.pass, this._info.encryptKey),
+                    // "param": AESencrypt(params.pass, this._info.encryptKey),
+                    "param": params.pass,
                     "email": params.email,
                     "files": filesWithSession.files,
                     "session": filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value,
