@@ -33,7 +33,6 @@ ostrio:files
 random@1.0.10
 shell-server
 dynamic-import
-ostrio:aes-crypto
 zuuk:stale-session
 meteortesting:mocha
 practicalmeteor:chai
