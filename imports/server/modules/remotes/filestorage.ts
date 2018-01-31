@@ -1,5 +1,4 @@
 import { Meteor } from 'meteor/meteor';
-import { AESencrypt, AESdecrypt } from 'meteor/ostrio:aes-crypto';
 
 import { Log } from '../logger';
 import { FileStorage } from '../../../collections/shared';
@@ -7,6 +6,7 @@ import { moduleLoader } from './moduleloader';
 import { BaseModuleInterface } from './base.module.interface';
 import { passMonitor$ } from '../accounts';
 
+const crypto = require('crypto');
 const path = require('path');
 const request = require('request');
 const htmlparser = require('htmlparser2');
@@ -42,6 +42,14 @@ class FileStorageModule implements BaseModuleInterface {
     private _initialised: boolean = false;
     public get initialised(): boolean {
         return this._initialised;
+    }
+
+    private encrypt (data: string, key: string){
+        // key should be UTF-8 string 16 characters long
+        let iv = key.split("").reverse().join("");
+        let cipher = crypto.createCipheriv('aes-128-cbc', Buffer.from(key,'utf-8'), Buffer.from(iv, 'utf-8'));
+        cipher.setAutoPadding(true);
+        return Buffer.concat([cipher.update(data), cipher.final()]).toString('base64');
     }
 
     private getAuthOptions (settings){
@@ -90,8 +98,7 @@ class FileStorageModule implements BaseModuleInterface {
                 {"userId": params.userId},
                 { $set: {
                     "login": params.login,
-                    // "param": AESencrypt(params.pass, this._info.encryptKey),
-                    "param": params.pass,
+                    "param": this.encrypt(params.pass, this._info.encryptKey),
                     "email": params.email,
                     "files": filesWithSession.files,
                     "session": filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value,
