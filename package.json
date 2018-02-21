@@ -4,7 +4,7 @@
   "scripts": {
     "meteor": "ROOT_URL= MONGO1_URL=mongodb://localhost:3031/meteor meteor run --port 3030 --settings ./private/settings.json",
     "debug":  "ROOT_URL= MONGO_URL=mongodb://localhost:27017/biowardrobe-ng meteor --port 3030 --settings ./private/settings.json --raw-logs |./node_modules/bunyan/bin/bunyan",
-    "build": "meteor build ../output && scp ../output/biowardrobe-ng.tar.gz devel:/biowardrobe-ng/ && rm -rf ../output",
+    "build": "meteor build ../output && scp ../output/biowardrobe-ng.tar.gz devel:/meteor/biowardrobe-ng/ && rm -rf ../output",
     "postinstall": "typings i"
   },
   "dependencies": {
