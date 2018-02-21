@@ -1,10 +1,12 @@
 import { Meteor } from 'meteor/meteor';
+import { AESencrypt, AESdecrypt } from 'meteor/ostrio:aes-crypto';
 
 import { Log } from '../logger';
 import { FileStorage } from '../../../collections/shared';
 import { moduleLoader } from './moduleloader';
 import { BaseModuleInterface } from './base.module.interface';
 import { passMonitor$ } from '../accounts';
+import {oauth2Model} from "../oauth/oauth2model";
 
 const crypto = require('crypto');
 const path = require('path');
@@ -23,16 +25,18 @@ interface paramsFormat {
  * List of module parameters
  */
 interface Info {
-    moduleId: String;
-    caption: String;
-    type: String;
-    loginUrl: String;
-    viewListUrl: String;
-    downloadUrl: String;
-    encryptKey:  String;
+    moduleId: string;
+    caption: string;
+    type: string;
+    loginUrl: string;
+    viewListUrl: string;
+    downloadUrl: string;
+    private_key:  string;
+    private_iv:  string;
+    encryptKey: string,
     auth: {
-        "login": String,
-        "pass": String
+        "login": string,
+        "pass": string
     }
 }
 
@@ -40,16 +44,34 @@ class FileStorageModule implements BaseModuleInterface {
 
     private _info: Info = null;
     private _initialised: boolean = false;
+    private app:any = undefined;
+    private routes = undefined;
+
     public get initialised(): boolean {
         return this._initialised;
     }
 
-    private encrypt (data: string, key: string){
+    private encrypt (data: string, key: string, iv: string){
         // key should be UTF-8 string 16 characters long
-        let iv = key.split("").reverse().join("");
-        let cipher = crypto.createCipheriv('aes-128-cbc', Buffer.from(key,'utf-8'), Buffer.from(iv, 'utf-8'));
+        // let iv = key.split("").reverse().join("");
+        let cipher = crypto.createCipheriv('aes-128-cbc',
+            Buffer.from(key,'base64'),
+            Buffer.from(iv, 'base64'));
         cipher.setAutoPadding(true);
         return Buffer.concat([cipher.update(data), cipher.final()]).toString('base64');
+    }
+
+    private decrypt (data: string, key: string, iv: string){
+        // key should be UTF-8 string 16 characters long
+        // let iv = key.split("").reverse().join("");
+        let decipher = crypto.createDecipheriv('aes-128-cbc',
+            Buffer.from(key,'base64'),
+            Buffer.from(iv, 'base64'));
+        decipher.setAutoPadding(true);
+        let decrypted = decipher.update(data, 'base64', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+        // return Buffer.concat([cipher.update(data), cipher.final()]).toString('base64');
     }
 
     private getAuthOptions (settings){
@@ -62,7 +84,7 @@ class FileStorageModule implements BaseModuleInterface {
         return null;
     }
 
-    private loadSettings (): Boolean{
+    private loadSettings (): Boolean {
         let moduleId = path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf(".")); // unique module identifier
         let moduleSettings = Meteor.settings.remotes[moduleId];
         this._info = {
@@ -72,13 +94,17 @@ class FileStorageModule implements BaseModuleInterface {
             loginUrl:    moduleSettings["loginUrl"],
             viewListUrl: moduleSettings["viewListUrl"],
             downloadUrl: moduleSettings["downloadUrl"],
-            encryptKey:  moduleSettings["encryptKey"] ? moduleSettings["encryptKey"] : Random.secret(10),
+            private_key: moduleSettings["private_key"] ? moduleSettings["private_key"] : "",
+            private_iv: moduleSettings["private_iv"] ? moduleSettings["private_iv"] : "",
+            encryptKey: moduleSettings["encryptKey"] ? moduleSettings["encryptKey"] : "",
             auth:        this.getAuthOptions (moduleSettings)
         };
         this._initialised = true;
+        return this._initialised;
     }
 
     constructor (){
+
         try {
             this.loadSettings();
             if (!this._info.auth){
@@ -86,6 +112,30 @@ class FileStorageModule implements BaseModuleInterface {
                     this.updateFileStorage (p);
                 });
             }
+            WebApp.rawConnectHandlers.use('/coredata', Meteor.bindEnvironment((req, res, next) => {
+                res.writeHead(200,{ 'Content-Type': 'text/plain'});
+                if(req.connection.remoteAddress!='127.0.0.1') {
+                    res.end('');
+                    return next();
+                }
+                Log.debug('[Query]:',req.query);
+                if(req.query && req.query['email']) {
+                    let data=FileStorage.findOne({"email":req.query['email']});
+                    if(data) {
+                        Log.debug('[CoreData]:', data);
+                        if(data['param'] &&
+                            /^{"ct":"([A-Za-z0-9+\/]+(\={0,2}))","iv":"([0-9a-f]{32})","s"\:"([0-9a-f]{16})"}$/.test(data['param'])) {
+                            let de = AESdecrypt(data['param'],this._info.encryptKey);
+                            res.write(`${data['login']}\t${data['email']}\t${data['session']}\t${de}\n`);
+                        } else {
+                            let de = this.decrypt(data['param'], this._info.private_key, this._info.private_iv);
+                            res.write(`${data['login']}\t${data['email']}\t${data['session']}\t${de}\n`);
+                        }
+                    }
+                }
+                res.end('');
+                return next();
+            }));
         } catch (err){
             Log.debug("Error module configuration");
         }
@@ -97,13 +147,13 @@ class FileStorageModule implements BaseModuleInterface {
             FileStorage.update(
                 {"userId": params.userId},
                 { $set: {
-                    "login": params.login,
-                    "param": this.encrypt(params.pass, this._info.encryptKey),
-                    "email": params.email,
-                    "files": filesWithSession.files,
-                    "session": filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value,
-                    "timestamp": new Date()
-                }
+                        "login": params.login,
+                        "param": this.encrypt(params.pass, this._info.private_key, this._info.private_iv),
+                        "email": params.email,
+                        "files": filesWithSession.files,
+                        "session": filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value,
+                        "timestamp": new Date()
+                    }
                 },
                 { upsert: true }
             );
@@ -138,10 +188,10 @@ class FileStorageModule implements BaseModuleInterface {
                     jar: cookies,
                     followRedirects: true,
                     form:
-                    {
-                        username: params.login,
-                        password: params.pass
-                    }
+                        {
+                            username: params.login,
+                            password: params.pass
+                        }
                 },
 
                 Meteor.bindEnvironment(function(err,res,body)

@@ -31,9 +31,9 @@ Accounts.registerLoginHandler("biowardrobeng", function (request) {
 
 
     let update = {};
-    let nm, result = {success:false};
+    let nm, result:any = {success:false};
 
-    if(Meteor.settings['ldap'] && Meteor.settings['ldap']['url'].length>0) {
+    if(Meteor.settings['ldap'] && Meteor.settings['ldap']['url'].length>0 && domain == Meteor.settings['oauth2server']['domain']) {
         let _ldap:any = new LDAPClient(Meteor.settings['ldap']);
         let ldap_response = _ldap.auth(_email, _pass);
 
@@ -66,7 +66,7 @@ Accounts.registerLoginHandler("biowardrobeng", function (request) {
         }
     }
 
-    return findOrCreateUser(_email, _pass);
+    return findOrCreateUser(_email, _pass, );
 
 });
 /**

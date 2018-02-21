@@ -15,7 +15,9 @@ export const AuthRouting: ModuleWithProviders = RouterModule.forChild([ // only 
     { path: 'forgot', component: BWForgot},
     { path: 'reset', component: BWReset},
     { path: 'logout', component: BWLogout },
-    { path: 'authorized', component: BWLoggedIn }
+    { path: 'authorized', component: BWLoggedIn },
+    { path: '', redirectTo: '/login', pathMatch: 'full'},
+    { path: '**', redirectTo: '/login' }
 ]);
 
 // Why do we need two routes for the same component?
