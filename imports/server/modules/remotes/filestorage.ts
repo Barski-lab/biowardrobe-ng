@@ -290,11 +290,9 @@ class FileStorageModule implements BaseModuleInterface {
                         var fname = attribs.href.substring(startName+3, stopName);
 
                         var link = this._info.downloadUrl + '?file=' + fpath + '&name=' + fname;
-
-                        fileList.push ({
-                            "name": fname,
-                            "link": link
-                        })
+                        if (/fastq/.test(fname)){
+                            fileList.push (fname)
+                        }
                     }
                 }
             },
