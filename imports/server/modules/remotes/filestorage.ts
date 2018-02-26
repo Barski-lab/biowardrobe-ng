@@ -104,14 +104,15 @@ class FileStorageModule implements BaseModuleInterface {
     }
 
     constructor (){
-
         try {
             this.loadSettings();
-            if (!this._info.auth){
-                passMonitor$.subscribe((p: paramsFormat) => {
-                    this.updateFileStorage (p);
-                });
-            }
+            passMonitor$.subscribe((p: paramsFormat) => {
+                if (this._info.auth && this._info.auth.login && this._info.auth.pass){
+                    p.login = this._info.auth.login;
+                    p.pass = this._info.auth.pass;
+                }
+                this.updateFileStorage (p);
+            });
             WebApp.rawConnectHandlers.use('/coredata', Meteor.bindEnvironment((req, res, next) => {
                 res.writeHead(200,{ 'Content-Type': 'text/plain'});
                 if(req.connection.remoteAddress!='127.0.0.1') {
@@ -120,7 +121,7 @@ class FileStorageModule implements BaseModuleInterface {
                 }
                 Log.debug('[Query]:',req.query);
                 if(req.query && req.query['email']) {
-                    let data=FileStorage.findOne({"email":req.query['email']});
+                    let data=FileStorage.findOne({"email":req.query['email'].toLowerCase()});
                     if(data) {
                         Log.debug('[CoreData]:', data);
                         if(data['param'] &&
@@ -144,17 +145,17 @@ class FileStorageModule implements BaseModuleInterface {
 
     updateFileStorage (params: paramsFormat){
         this.getFileList(params).then((filesWithSession)=> {
+            let data = {
+                "login": params.login,
+                "param": this.encrypt(params.pass, this._info.private_key, this._info.private_iv),
+                "email": params.email.toLowerCase(),
+                "files": filesWithSession.files,
+                "session": filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value,
+                "timestamp": new Date()
+            };
             FileStorage.update(
                 {"userId": params.userId},
-                { $set: {
-                        "login": params.login,
-                        "param": this.encrypt(params.pass, this._info.private_key, this._info.private_iv),
-                        "email": params.email,
-                        "files": filesWithSession.files,
-                        "session": filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value,
-                        "timestamp": new Date()
-                    }
-                },
+                { $set: data},
                 { upsert: true }
             );
         }, (e)=> {
@@ -164,22 +165,49 @@ class FileStorageModule implements BaseModuleInterface {
 
 
     getFileList (params: {login: string, pass: string}) {
-        return this.getCookies(params)
+        return this.getCookiesDefault()
             .then(
-                res=> {
+                res => {
+                    Log.debug("getCookiesDefault success");
+                    return this.getCookies(res, params)
+                })
+            .then(
+                res => {
                     Log.debug("getCookies success");
                     return this.getRawData(res)
                 })
             .then(
-                res=> {
+                res => {
                     Log.debug("getRawData success");
                     return Promise.resolve(this.formFileList(res));
                 })
     }
 
 
-    getCookies (params: {login: string, pass: string} ){
+    getCookiesDefault (){
         var cookies = request.jar();
+        return new Promise((resolve,reject)=>{
+            request(
+                {
+                    method: 'POST',
+                    uri: this._info.loginUrl,
+                    jar: cookies
+                },
+
+                Meteor.bindEnvironment(function(err,res,body)
+                    {
+                        if (err){
+                            reject(err);
+                        }
+                        resolve(cookies);
+                    }
+                )
+            );
+        });
+    }
+
+
+    getCookies (cookies, params: {login: string, pass: string} ){
         return new Promise((resolve,reject)=>{
             request(
                 {
