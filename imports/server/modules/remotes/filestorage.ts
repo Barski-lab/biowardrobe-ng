@@ -34,6 +34,7 @@ interface Info {
     private_key:  string;
     private_iv:  string;
     encryptKey: string,
+    token: string,
     auth: {
         "login": string,
         "pass": string
@@ -55,8 +56,8 @@ class FileStorageModule implements BaseModuleInterface {
         // key should be UTF-8 string 16 characters long
         // let iv = key.split("").reverse().join("");
         let cipher = crypto.createCipheriv('aes-128-cbc',
-            Buffer.from(key,'base64'),
-            Buffer.from(iv, 'base64'));
+            new Buffer(key,'base64'),
+            new Buffer(iv, 'base64'));
         cipher.setAutoPadding(true);
         return Buffer.concat([cipher.update(data), cipher.final()]).toString('base64');
     }
@@ -65,8 +66,8 @@ class FileStorageModule implements BaseModuleInterface {
         // key should be UTF-8 string 16 characters long
         // let iv = key.split("").reverse().join("");
         let decipher = crypto.createDecipheriv('aes-128-cbc',
-            Buffer.from(key,'base64'),
-            Buffer.from(iv, 'base64'));
+            new Buffer(key,'base64'),
+            new Buffer(iv, 'base64'));
         decipher.setAutoPadding(true);
         let decrypted = decipher.update(data, 'base64', 'utf8');
         decrypted += decipher.final('utf8');
@@ -94,6 +95,7 @@ class FileStorageModule implements BaseModuleInterface {
             loginUrl:    moduleSettings["loginUrl"],
             viewListUrl: moduleSettings["viewListUrl"],
             downloadUrl: moduleSettings["downloadUrl"],
+            token: moduleSettings["token"],
             private_key: moduleSettings["private_key"] ? moduleSettings["private_key"] : "",
             private_iv: moduleSettings["private_iv"] ? moduleSettings["private_iv"] : "",
             encryptKey: moduleSettings["encryptKey"] ? moduleSettings["encryptKey"] : "",
@@ -120,6 +122,10 @@ class FileStorageModule implements BaseModuleInterface {
                     return next();
                 }
                 Log.debug('[Query]:',req.query);
+                if(!req.query || !req.query['token'] || req.query['token'] != this._info.token ) {
+                    res.end('');
+                    return next();
+                }
                 if(req.query && req.query['email']) {
                     let data=FileStorage.findOne({"email":req.query['email'].toLowerCase()});
                     if(data) {
