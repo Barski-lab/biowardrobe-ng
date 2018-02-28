@@ -35,6 +35,7 @@ interface Info {
     private_iv:  string;
     encryptKey: string,
     token: string,
+    refreshSessionInterval: number,
     auth: {
         "login": string,
         "pass": string
@@ -44,13 +45,8 @@ interface Info {
 class FileStorageModule implements BaseModuleInterface {
 
     private _info: Info = null;
-    private _initialised: boolean = false;
     private app:any = undefined;
     private routes = undefined;
-
-    public get initialised(): boolean {
-        return this._initialised;
-    }
 
     private encrypt (data: string, key: string, iv: string){
         // key should be UTF-8 string 16 characters long
@@ -75,6 +71,14 @@ class FileStorageModule implements BaseModuleInterface {
         // return Buffer.concat([cipher.update(data), cipher.final()]).toString('base64');
     }
 
+    private switchDecrypt(paramEncrypted: string){
+        if(/^{"ct":"([A-Za-z0-9+\/]+(\={0,2}))","iv":"([0-9a-f]{32})","s"\:"([0-9a-f]{16})"}$/.test(paramEncrypted)) {
+            return AESdecrypt(paramEncrypted, this._info.encryptKey);
+        } else {
+            return this.decrypt(paramEncrypted, this._info.private_key, this._info.private_iv);
+        }
+    }
+
     private getAuthOptions (settings){
         try {
             return {
@@ -95,14 +99,13 @@ class FileStorageModule implements BaseModuleInterface {
             loginUrl:    moduleSettings["loginUrl"],
             viewListUrl: moduleSettings["viewListUrl"],
             downloadUrl: moduleSettings["downloadUrl"],
-            token: moduleSettings["token"],
+            token:       moduleSettings["token"],
             private_key: moduleSettings["private_key"] ? moduleSettings["private_key"] : "",
-            private_iv: moduleSettings["private_iv"] ? moduleSettings["private_iv"] : "",
-            encryptKey: moduleSettings["encryptKey"] ? moduleSettings["encryptKey"] : "",
+            private_iv:  moduleSettings["private_iv"] ? moduleSettings["private_iv"] : "",
+            encryptKey:  moduleSettings["encryptKey"] ? moduleSettings["encryptKey"] : "",
+            refreshSessionInterval: moduleSettings["refreshSessionInterval"] ? moduleSettings["refreshSessionInterval"] : 600,
             auth:        this.getAuthOptions (moduleSettings)
         };
-        this._initialised = true;
-        return this._initialised;
     }
 
     constructor (){
@@ -115,6 +118,16 @@ class FileStorageModule implements BaseModuleInterface {
                 }
                 this.updateFileStorage (p);
             });
+            Meteor.setInterval(() => {
+                FileStorage.find({$or:[{"active": true},{"active":{$exists:false}}]}).forEach(item => {
+                    this.updateFileStorage ({
+                        email:  item.email,
+                        login:  item.login,
+                        pass:   this.switchDecrypt(item['param']),
+                        userId: item.userId,
+                    });
+                })
+            }, this._info.refreshSessionInterval*1000);
             WebApp.rawConnectHandlers.use('/coredata', Meteor.bindEnvironment((req, res, next) => {
                 res.writeHead(200,{ 'Content-Type': 'text/plain'});
                 if(req.connection.remoteAddress!='127.0.0.1') {
@@ -130,14 +143,7 @@ class FileStorageModule implements BaseModuleInterface {
                     let data=FileStorage.findOne({"email":req.query['email'].toLowerCase()});
                     if(data) {
                         Log.debug('[CoreData]:', data);
-                        if(data['param'] &&
-                            /^{"ct":"([A-Za-z0-9+\/]+(\={0,2}))","iv":"([0-9a-f]{32})","s"\:"([0-9a-f]{16})"}$/.test(data['param'])) {
-                            let de = AESdecrypt(data['param'],this._info.encryptKey);
-                            res.write(`${data['login']}\t${data['email']}\t${data['session']}\t${de}\n`);
-                        } else {
-                            let de = this.decrypt(data['param'], this._info.private_key, this._info.private_iv);
-                            res.write(`${data['login']}\t${data['email']}\t${data['session']}\t${de}\n`);
-                        }
+                        res.write(`${data['login']}\t${data['email']}\t${data['session']}\t${this.switchDecrypt(data['param'])}\n`);
                     }
                 }
                 res.end('');
@@ -150,23 +156,24 @@ class FileStorageModule implements BaseModuleInterface {
 
 
     updateFileStorage (params: paramsFormat){
+        let data = {
+            "login": params.login,
+            "param": this.encrypt(params.pass, this._info.private_key, this._info.private_iv),
+            "email": params.email.toLowerCase(),
+            "timestamp": new Date()
+        };
         this.getFileList(params).then((filesWithSession)=> {
-            let data = {
-                "login": params.login,
-                "param": this.encrypt(params.pass, this._info.private_key, this._info.private_iv),
-                "email": params.email.toLowerCase(),
-                "files": filesWithSession.files,
-                "session": filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value,
-                "timestamp": new Date()
-            };
-            FileStorage.update(
-                {"userId": params.userId},
-                { $set: data},
-                { upsert: true }
-            );
+            data["active"] = true;
+            data["files"] = filesWithSession.files;
+            data["session"] = filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value;
+            FileStorage.update({"userId": params.userId}, {$set: data}, {upsert: true});
         }, (e)=> {
-            Log.debug("Failed to get files from file storage:\n", e);
-        })
+            Log.debug("Failed to log in to file storage");
+            data["active"] = false;
+            data["files"] = [];
+            data["session"] = null;
+            FileStorage.update({"userId": params.userId}, {$set: data}, {upsert: true});
+        });
     }
 
 
@@ -230,7 +237,7 @@ class FileStorageModule implements BaseModuleInterface {
 
                 Meteor.bindEnvironment(function(err,res,body)
                     {
-                        if (err){
+                        if (err || /LDAP login failed/.test(body)){
                             reject(err);
                         }
                         resolve(cookies);
@@ -324,12 +331,12 @@ class FileStorageModule implements BaseModuleInterface {
     }
 
     getInfo (){
-        return this._info ? _.omit(this._info, ["loginUrl", "viewListUrl", "downloadUrl", "encryptKey", "auth"]) : null;
+        return this._info ? _.omit(this._info, ["loginUrl", "viewListUrl", "downloadUrl", "private_key", "private_iv", "encryptKey", "token", "auth"]) : null;
     }
 
 }
 
 Meteor.startup(() => {
     var fileStorage = new FileStorageModule();
-    if (fileStorage.initialised) moduleLoader.addModule (fileStorage);
+    moduleLoader.addModule (fileStorage);
 });
