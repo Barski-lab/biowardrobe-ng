@@ -24,7 +24,7 @@
                 {{_cwlService.formGroupInputs.controls[e.key]?.text}}
             </mat-slide-toggle>
             <ng-template [ngSwitchCase]="'File'">
-                <bw-uploadpanel *ngIf="_allowUpload" [fileCollection]="_cwlService.getFilesUploadCollection()"></bw-uploadpanel>
+                <bw-uploadpanel *ngIf="_allowUpload" [fileCollection]="_cwlService.getFilesUploadCollection()" [storagePath]="_inputFolder"></bw-uploadpanel>
                 <!--<sd-list-dnacore *ngIf="_allowUpload && !!_ddp && !!_ddp.status && _ddp.status.connected" [ddp]="_ddp"></sd-list-dnacore>-->
                 <!--<bw-cloudloader-button [directories]="directories"-->
                                        <!--[label]="'Label'"-->

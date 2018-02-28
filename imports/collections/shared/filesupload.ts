@@ -34,7 +34,7 @@ FilesUpload = new FilesCollection({
     storagePath: function(fileObj):string{
         let toSavePath:string = Meteor.settings['uploadDirectory'];
         if(fileObj && fileObj.meta && fileObj.meta.storagePath){
-            toSavePath += fileObj.meta.storagePath;
+            toSavePath = [toSavePath,fileObj.meta.storagePath].join('/').replace(/\/+/g,'/');
         }
         return toSavePath;
     },
