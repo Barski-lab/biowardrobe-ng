@@ -93,6 +93,12 @@ export class BWCWLForm extends BWComponentBase {
         this._allowUpload = value;
     }
 
+    private _inputFolder: string;
+    @Input("inputFolder") set inputFolder(value:any) {
+        if(value == undefined) return;
+        this._inputFolder = value;
+    }
+
     @Output()
     valueChanges = new Subject();
 
