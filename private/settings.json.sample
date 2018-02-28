@@ -48,6 +48,10 @@
           "nullConnection": false
         },
         "encryptKey": "",
+        "private_key": "",
+        "private_iv": "",
+        "token": "",
+        "refreshSessionInterval": 600,
         "auth":
           {
             "login": "yourLogin",

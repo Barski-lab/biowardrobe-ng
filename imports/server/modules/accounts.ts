@@ -65,7 +65,6 @@ Accounts.registerLoginHandler("biowardrobeng", function (request) {
             return findOrCreateUser(_email, _pass, result.login);
         }
     }
-
     return findOrCreateUser(_email, _pass, );
 
 });
@@ -127,12 +126,11 @@ export function findOrCreateUser( _email, _pass, login?) {
 export function setExtraUsers (){
     if(Meteor.settings['extra_users'] && Meteor.settings['extra_users'].length > 0) {
         Meteor.settings['extra_users'].forEach( (email)=> {
-            let email = email.toLowerCase();
-            if (!Meteor.users.findOne({"emails.address": email})) {
+            if (!Meteor.users.findOne({"emails.address": email.toLowerCase()})) {
                 let pass = Random.secret();
                 // Log.debug ("pass", pass);
                 Accounts.createUser({
-                    email: email,
+                    email: email.toLowerCase(),
                     password: pass
                 });
             }
