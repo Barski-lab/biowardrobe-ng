@@ -3,12 +3,11 @@ import { Match, check } from 'meteor/check';
 
 import { Log } from '../modules/logger';
 import { Samples, Drafts } from '../../collections/shared';
-
+import { makeUpdateObject } from './lib'
 
 Meteor.methods({
     "samples/create": function () {
         //TODO check all the things required to copy data from drafts
-
         if (!Throttle.checkThenSet(this.connection.clientAddress + '_samplesCreate', 2, 30000))
             throw new Meteor.Error(500, 'Please wait at least a half a minute to try again');
 
@@ -45,5 +44,25 @@ Meteor.methods({
 
         Drafts.remove(_c['_id']);
         return Samples.insert(c);
+    },
+
+    "samples/upsert": function (sampleId, obj) {
+        // TODO Check what will happen if I update the document with new user.id and put there some bad code
+        if (!Throttle.checkThenSet(this.connection.clientAddress+'_samplesUpsert', 2, 2000)) {
+            throw new Meteor.Error(500, 'Please wait at least 2s to try again');
+        }
+
+        if (!this.userId) throw new Meteor.Error(403, 'User not found');
+        check(sampleId, String);
+        check(obj, Object);
+
+        let uo = makeUpdateObject(obj);
+        Samples.update(
+            { "userId": this.userId, "_id": sampleId },
+            { $set: uo },
+            { upsert: true });
+
+        Log.debug("Sample is updated", sampleId, uo);
     }
+
 });

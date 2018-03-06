@@ -65,6 +65,12 @@ export class BWUploadPanel{
     @Input('fileCollection')
     currentCollection:FilesCollection;
 
+    /*
+     * Contains FileObj after successful upload
+     */
+    @Input()
+    bwControl;
+
     /**
      * Gives the current upload status as one of the following strings:
      * "PICK_FILE" | "CONFIRM_PICK" | "UPLOADING" | "DONE" | "ERROR"
@@ -72,7 +78,6 @@ export class BWUploadPanel{
      */
     @Output('onStatusChange')
     statusStringEmitter:EventEmitter<UploadStatusString> = new EventEmitter<UploadStatusString>();
-
 
     /*
         Prepare dialog and zone, and set state during init.
@@ -171,6 +176,8 @@ export class BWUploadPanel{
                         else{
                             console.log("File Uploaded: " + fileObj.name);
                             this.setStatus(UploadStatus.DONE);
+                            this.bwControl.setValue(fileObj.path);
+                            this.bwControl.markAsDirty(); // we need to set to dirty manually because makeData will skip it otherwise
                         }});
 
                     },

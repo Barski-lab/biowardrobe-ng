@@ -10,7 +10,7 @@ import { CWLs, FilesUpload } from '../../../collections/shared';
 
 import {
     BWServiceBase,
-    BWInput,
+    BWInputFile,
     BWInputText,
     BWInputNumber,
     BWInputCheckbox
@@ -108,7 +108,7 @@ export class BWCWLService extends BWServiceBase {
             } else  if( e.customProps['s:isBasedOn'] ) {
 
             } else if( e.type.type == "File" ) {
-                this._formGroupInputs.addControl(e.id, new BWInput(e.label,!e.type.isNullable));
+                this._formGroupInputs.addControl(e.id, new BWInputFile(e.label,!e.type.isNullable));
                 this._templatePush(e);
             } else if( e.type.type == "string" ){
                 this._formGroupInputs.addControl(e.id, new BWInputText(e.label,!e.type.isNullable));

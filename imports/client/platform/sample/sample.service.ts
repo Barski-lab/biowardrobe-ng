@@ -24,6 +24,9 @@ export class BWSampleService extends BWServiceBase {
         return this.MeteorCall("samples/create");
     }
 
+    public editSample (sampleId, params){
+        return this.MeteorCall("samples/upsert", sampleId, params);
+    }
 
 }
 
