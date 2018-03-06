@@ -97,18 +97,15 @@ export class BWSampleEdit extends BWComponentBase implements AfterViewInit {
 
 
     private cwlFormValueChanges(e) {
+        let cwlFormData = {
+            cwlId:    e.cwlId,
+            inputs:   e.data.inputs,
+            metadata: e.data.metadata
+        };
         if(this._sampleId == "new") {
-            let cwlFormData = {
-                cwlId:    e.cwlId,
-                inputs:   e.data.inputs,
-                metadata: e.data.metadata
-            };
-            console.log("cwlFormValueChanges drafts/upsert", cwlFormData);
-            this.tracked = this.MeteorCall("drafts/upsert","cwlform", cwlFormData)
-                .subscribe(
-                    (res) => console.log(res),
-                    (err) => console.log(err)
-                );
+            this.tracked = this.MeteorCall("drafts/upsert","cwlform", cwlFormData).subscribe(()=>{},(er)=>{console.log(er)})
+        } else {
+            this.tracked = this._sample.editSample(this._sampleId, {"cwl": _.omit(cwlFormData,["cwlId"])} ).subscribe(()=>{},(er)=>{console.log(er)});
         }
     }
 
@@ -116,7 +113,7 @@ export class BWSampleEdit extends BWComponentBase implements AfterViewInit {
     private submit() {
         if(!this.checkSubmit()) return false;
         if (this._cwlService.formValid()) {
-            this._sample.addSample().subscribe(
+            this.tracked = this._sample.addSample().subscribe(
                 (sampleId) => {
                     this._showError=false;
                     console.log("Added sample:",sampleId);

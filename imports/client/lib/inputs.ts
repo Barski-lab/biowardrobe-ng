@@ -53,6 +53,10 @@ export class BWInputText extends BWInput {
     type = 'text';
 }
 
+export class BWInputFile extends BWInput {
+    type = 'file';
+}
+
 export class BWInputNumber extends BWInput {
     type = 'number';
 }

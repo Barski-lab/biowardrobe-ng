@@ -49,3 +49,7 @@ FilesUpload = new FilesCollection({
     // namingFunction: function(fileObj:FileObj):string{}, - The Default returns the file's _id entry
 
 });
+
+if (Meteor.isServer) {
+    FilesUpload.denyClient(); // Deny insert/update/remove from client
+}

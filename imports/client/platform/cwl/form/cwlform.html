@@ -4,14 +4,12 @@
 
             <bw-textinput *ngSwitchDefault
                           [bwControl]="_cwlService.formGroupMetadata.controls[e.key]"
-                          class="full-width"
-                          [readonly]="_allowUpload">
+                          class="full-width">
             </bw-textinput>
 
             <mat-slide-toggle *ngSwitchCase="'boolean'"
                               [formControl]="_cwlService.formGroupMetadata.controls[e.key]"
-                              class="full-width"
-                              [disabled]="_allowUpload">
+                              class="full-width">
                 {{_cwlService.formGroupMetadata.controls[e.key]?.text}}
             </mat-slide-toggle>
 
@@ -21,19 +19,20 @@
 
             <bw-textinput *ngSwitchDefault
                           [bwControl]="_cwlService.formGroupInputs.controls[e.key]"
-                          class="full-width"
-                          [readonly]="_allowUpload">
+                          class="full-width">
             </bw-textinput>
 
             <mat-slide-toggle *ngSwitchCase="'boolean'"
                               [formControl]="_cwlService.formGroupInputs.controls[e.key]"
-                              class="full-width"
-                              [disabled]="_allowUpload">
+                              class="full-width">
                 {{_cwlService.formGroupInputs.controls[e.key]?.text}}
             </mat-slide-toggle>
 
             <ng-template [ngSwitchCase]="'File'">
-                <bw-uploadpanel *ngIf="_allowUpload" [fileCollection]="_cwlService.getFilesUploadCollection()" [storagePath]="_inputFolder"></bw-uploadpanel>
+                <bw-uploadpanel *ngIf="_allowUpload"
+                                [fileCollection]="_cwlService.getFilesUploadCollection()"
+                                [storagePath]="_inputFolder"
+                                [bwControl]="_cwlService.formGroupInputs.controls[e.key]"></bw-uploadpanel>
                 <!--<sd-list-dnacore *ngIf="_allowUpload && !!_ddp && !!_ddp.status && _ddp.status.connected" [ddp]="_ddp"></sd-list-dnacore>-->
                 <!--<bw-cloudloader-button [directories]="directories"-->
                                        <!--[label]="'Label'"-->
@@ -50,13 +49,11 @@
         <div layout="column" class="push-top push-bottom push-left-sm" *ngFor="let e of _cwlService.formTemplateAdvanced" [ngSwitch]="e.type">
             <bw-textinput *ngSwitchDefault
                           [bwControl]="_cwlService.formGroupInputs.controls[e.key]"
-                          class="full-width"
-                          [readonly]="_allowUpload">
+                          class="full-width">
             </bw-textinput>
 
             <mat-slide-toggle *ngSwitchCase="'boolean'"
-                              [formControl]="_cwlService.formGroupInputs.controls[e.key]" class="full-width"
-                              [disabled]="_allowUpload">
+                              [formControl]="_cwlService.formGroupInputs.controls[e.key]" class="full-width">
                 {{_cwlService.formGroupInputs.controls[e.key]?.text}}
             </mat-slide-toggle>
         </div>
