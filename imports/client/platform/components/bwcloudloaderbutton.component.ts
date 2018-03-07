@@ -5,6 +5,7 @@ import {
     EventEmitter
 } from "@angular/core";
 
+import { FormControl } from '@angular/forms';
 import { MatDialog } from '@angular/material';
 
 import { BWComponentBase } from '../../lib'
@@ -18,6 +19,7 @@ import { BWCloudLoaderDialog } from './bwcloudloaderdialog.component'
 export class BWCloudLoaderButton extends BWComponentBase {
     @Input()  directories = [];
     @Input()  label: string = "Your label here";
+    @Input()  bwControl:      FormControl; // to contain submitted Object(s)
     @Output() selectedItems:  EventEmitter<any> = new EventEmitter();
     @Output() submittedItems: EventEmitter<any> = new EventEmitter();
     @Output() openItem:       EventEmitter<any> = new EventEmitter();
@@ -35,7 +37,8 @@ export class BWCloudLoaderButton extends BWComponentBase {
             width: '800px',
             data: {
                 directories: this.directories,
-                label:       this.label
+                label:       this.label,
+                bwControl:   this.bwControl
             }
         });
 

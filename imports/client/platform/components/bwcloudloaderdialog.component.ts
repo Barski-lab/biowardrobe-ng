@@ -17,6 +17,7 @@ import { BWComponentBase } from '../../lib'
     template: `
         <bw-cloudloader [directories]="data.directories"
                         [label]="data.label"
+                        [bwControl]="data.bwControl"
                         (selectedItems)="onSelectedItems($event)"
                         (submittedItems)="onSubmittedItems($event)"
                         (openItem)="onOpenItem($event)"

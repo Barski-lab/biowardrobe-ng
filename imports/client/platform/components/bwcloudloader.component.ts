@@ -5,6 +5,8 @@ import {
     EventEmitter
 } from '@angular/core';
 
+import { FormControl } from '@angular/forms';
+
 import { BWComponentBase } from '../../lib'
 
 
@@ -29,7 +31,7 @@ import { BWComponentBase } from '../../lib'
                         </div>
                     </mat-card-content>
                     <mat-card-actions>
-                        <button color="primary" mat-raised-button (click)="submit()">Download</button>
+                        <button [disabled]="_selectedItems.length == 0" color="primary" mat-raised-button (click)="submit()">Submit</button>
                         <span class="badge pull-right" *ngIf="_selectedItems.length > 0">{{_selectedItems.length}}</span>
                     </mat-card-actions>
                 </mat-card>
@@ -49,6 +51,7 @@ import { BWComponentBase } from '../../lib'
 export class BWCloudLoader extends BWComponentBase{
     @Input()  directories = [];
     @Input()  label: string = "Your label here";
+    @Input()  bwControl:      FormControl; // to contain submitted Object(s)
     @Output() selectedItems:  EventEmitter<any> = new EventEmitter();
     @Output() submittedItems: EventEmitter<any> = new EventEmitter();
     @Output() openItem:       EventEmitter<any> = new EventEmitter();
@@ -63,6 +66,10 @@ export class BWCloudLoader extends BWComponentBase{
 
     submit(){
         this.submittedItems.emit (this._selectedItems);
+        if (this._selectedItems.length == 1 && this._selectedItems[0].type == "file" && this._selectedItems[0].path){
+            this.bwControl.setValue(this._selectedItems[0].path);
+            this.bwControl.markAsDirty(); // we need to set to dirty manually because makeData will skip it otherwise
+        }
     }
 
 
