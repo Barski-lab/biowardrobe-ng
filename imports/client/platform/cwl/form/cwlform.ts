@@ -16,50 +16,58 @@ export class BWCWLForm extends BWComponentBase {
 
     private activeTab: number = 0;
     private _allowUpload: boolean = false;
-    // private directories = [
-    //     {
-    //         "name": "folder_1",
-    //         "type": "folder",
-    //         "children": []
-    //     },
-    //     {
-    //         "name": "folder_2",
-    //         "type": "folder",
-    //         "children": [
-    //             {
-    //                 "name": "folder_2_1",
-    //                 "type": "folder",
-    //                 "children": [
-    //                     {
-    //                         "name": "folder_2_1_1",
-    //                         "type": "folder",
-    //                         "children": []
-    //                     },
-    //                     {
-    //                         "name": "folder_2_1_2",
-    //                         "type": "folder",
-    //                         "children": [
-    //                             {
-    //                                 "name": "file_2_1_2_1",
-    //                                 "type": "file"
-    //                             }
-    //                         ]
-    //                     }
-    //                 ]
-    //             },
-    //             {
-    //                 "name": "folder_2_2",
-    //                 "type": "folder",
-    //                 "children": []
-    //             }
-    //         ]
-    //     },
-    //     {
-    //         "name": "file_3",
-    //         "type": "file",
-    //         "children": []
-    //     }
-    // ];
+    private directories = [
+        {
+            "name": "folder_1",
+            "type": "folder",
+            "path": "folder_1",
+            "children": []
+        },
+        {
+            "name": "folder_2",
+            "type": "folder",
+            "path": "folder_2",
+            "children": [
+                {
+                    "name": "folder_2_1",
+                    "type": "folder",
+                    "path": "folder_2_1",
+                    "children": [
+                        {
+                            "name": "folder_2_1_1",
+                            "type": "folder",
+                            "path": "folder_2_1_1",
+                            "children": []
+                        },
+                        {
+                            "name": "folder_2_1_2",
+                            "type": "folder",
+                            "path": "folder_2_1_2",
+                            "children": [
+                                {
+                                    "name": "file_2_1_2_1",
+                                    "type": "file",
+                                    "path": "file_2_1_2_1",
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "folder_2_2",
+                    "type": "folder",
+                    "path": "folder_2_2",
+                    "children": []
+                }
+            ]
+        },
+        {
+            "name": "file_3",
+            "type": "file",
+            "path": "file_3",
+            "children": []
+        }
+    ];
 
     @Input("cwlData") set cwlData(value:any) {
         console.log ("Call cwlData");
@@ -107,21 +115,5 @@ export class BWCWLForm extends BWComponentBase {
     ) {
         super();
     }
-
-    // selectedItems (payload){
-    //     console.log ("Result selectedItems", payload);
-    // }
-    //
-    // submittedItems (payload){
-    //     console.log ("Result submittedItems", payload);
-    // }
-    //
-    // openItem (payload){
-    //     console.log ("Result openItem", payload);
-    // }
-    //
-    // previewItem (payload){
-    //     console.log ("Result previewItem", payload);
-    // }
 
 }

@@ -34,13 +34,11 @@
                                 [storagePath]="_inputFolder"
                                 [bwControl]="_cwlService.formGroupInputs.controls[e.key]"></bw-uploadpanel>
                 <!--<sd-list-dnacore *ngIf="_allowUpload && !!_ddp && !!_ddp.status && _ddp.status.connected" [ddp]="_ddp"></sd-list-dnacore>-->
-                <!--<bw-cloudloader-button [directories]="directories"-->
-                                       <!--[label]="'Label'"-->
-                                       <!--(selectedItems)="selectedItems($event)"-->
-                                       <!--(submittedItems)="submittedItems($event)"-->
-                                       <!--(openItem)="openItem($event)"-->
-                                       <!--(previewItem)="previewItem($event)">-->
-                <!--</bw-cloudloader-button>-->
+                <bw-cloudloader-button *ngIf="_allowUpload"
+                                       [directories]="directories"
+                                       [label]="'DNA Core'"
+                                       [bwControl]="_cwlService.formGroupInputs.controls[e.key]">
+                </bw-cloudloader-button>
             </ng-template>
         </div>
     </mat-tab>
