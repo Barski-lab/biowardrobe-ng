@@ -15,7 +15,7 @@ let FileStoragePublicFields = {
 
 
 Meteor.methods({
-
+    // Probably will be deprecated. Method was previously used to get list of files from the satellite
     "satellite/filestorage/list": function (accessToken) {
         Log.debug ("Call satellite/filestorage/list with", accessToken);
         // if (!Throttle.checkThenSet(this.connection.clientAddress + '_satelliteFileStorageList', 2, 2000))

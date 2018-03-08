@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 
 import { BWPlatformComponentsModule } from '../components/bwplatformcomponents.module'
 import { BWCWLService } from './cwl.service';
+import { BWUploadService } from './upload.service';
 import { BWCWLForm } from './form/cwlform';
 
 // Currently declarations and exports are empty till the moment I add other components
@@ -28,7 +29,7 @@ export class CWLModule {
     static forRoot(): ModuleWithProviders {
         return {
             ngModule: CWLModule,
-            providers: [BWCWLService]
+            providers: [BWCWLService, BWUploadService]
         }
     }
 }

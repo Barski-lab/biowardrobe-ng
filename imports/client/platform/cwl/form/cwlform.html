@@ -30,7 +30,7 @@
 
             <ng-template [ngSwitchCase]="'File'">
                 <bw-uploadpanel *ngIf="_allowUpload"
-                                [fileCollection]="_cwlService.getFilesUploadCollection()"
+                                [fileCollection]="_uploadService.getFilesUploadCollection()"
                                 [storagePath]="_inputFolder"
                                 [bwControl]="_cwlService.formGroupInputs.controls[e.key]"></bw-uploadpanel>
                 <!--<sd-list-dnacore *ngIf="_allowUpload && !!_ddp && !!_ddp.status && _ddp.status.connected" [ddp]="_ddp"></sd-list-dnacore>-->

@@ -6,7 +6,7 @@ import { FormGroup } from '@angular/forms';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { WorkflowFactory } from 'cwlts/models';
 
-import { CWLs, FilesUpload } from '../../../collections/shared';
+import { CWLs } from '../../../collections/shared';
 
 import {
     BWServiceBase,
@@ -144,10 +144,6 @@ export class BWCWLService extends BWServiceBase {
 
     public getModel(r) {
         return WorkflowFactory.from(r, "document");
-    }
-
-    public getFilesUploadCollection() {
-        return FilesUpload;
     }
 
     public parseCWL(cwlData):CwlParsed {
