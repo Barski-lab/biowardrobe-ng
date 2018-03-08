@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 
 import { BWComponentBase } from '../../../lib'
 import { BWCWLService } from '../cwl.service'
+import { BWUploadService } from '../upload.service'
 
 import template from './cwlform.html';
 
@@ -73,7 +74,7 @@ export class BWCWLForm extends BWComponentBase {
         console.log ("Call cwlData");
         if(!value) return;
         console.log ("Get not empty cwlData", value);
-        this.trackedId(this._cwlService.setCwlData(value).subscribe((v) => {
+        this.trackedId(this._cwlService.setCwlData(value).subscribe((v) => {    // TODO should I change it to this.tracked
             this.valueChanges.next(v)
         }),'cwlFormDataChanges');
 
@@ -111,9 +112,14 @@ export class BWCWLForm extends BWComponentBase {
     valueChanges = new Subject();
 
     constructor (
-        private _cwlService: BWCWLService
+        private _cwlService: BWCWLService,
+        private _uploadService: BWUploadService
     ) {
         super();
+        this.tracked = this._uploadService.getFileStorageList()
+            .subscribe((data) => {
+                this.directories = _uploadService.makeDirectoriesFromFileList(data.files);
+            });
     }
 
 }
