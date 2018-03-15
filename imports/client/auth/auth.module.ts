@@ -11,6 +11,7 @@ import { BWLogout }   from './logout/logout';
 import { BWForgot }   from './forgot/forgot';
 import { BWReset }    from './reset/reset';
 import { BWLoggedIn } from './loggedin/loggedin';
+import { BWEnroll }   from './enroll/enroll';
 
 
 @NgModule({
@@ -19,14 +20,16 @@ import { BWLoggedIn } from './loggedin/loggedin';
         BWLogout,
         BWLoggedIn,
         BWForgot,
-        BWReset
+        BWReset,
+        BWEnroll
     ],
     exports: [
         BWLogin,
         BWLogout,
         BWLoggedIn,
         BWForgot,
-        BWReset
+        BWReset,
+        BWEnroll
     ],
     imports: [
         CommonModule,

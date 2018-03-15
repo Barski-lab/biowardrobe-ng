@@ -121,18 +121,17 @@ export function findOrCreateUser( _email, _pass, login?) {
 /**
  * Read array of extra_users (array of emails) from Meteor.settings and if current email
  * is not assigned with any of the existent user, create the new user with current email
- * and random password
+ * and empty password. User cannot login until he sets his password by following the link
+ * sent to his email by sendEnrollmentEmail function
  */
 export function setExtraUsers (){
     if(Meteor.settings['extra_users'] && Meteor.settings['extra_users'].length > 0) {
         Meteor.settings['extra_users'].forEach( (email)=> {
             if (!Meteor.users.findOne({"emails.address": email.toLowerCase()})) {
-                let pass = Random.secret();
-                // Log.debug ("pass", pass);
-                Accounts.createUser({
+                let userId = Accounts.createUser({
                     email: email.toLowerCase(),
-                    password: pass
                 });
+                Accounts.sendEnrollmentEmail(userId);
             }
         });
     }
@@ -146,7 +145,6 @@ Accounts.onLogin(function (login) {
     Meteor.users.update({_id: login.user._id }, { $set: ou });
 });
 
-
 export function configAccounts(){
     Accounts.emailTemplates.siteName = Meteor.settings['name'];
     Accounts.emailTemplates.from = Meteor.settings.email.from;
@@ -154,10 +152,14 @@ export function configAccounts(){
     Accounts['urls'] = _.extend(Accounts['urls'],{
         resetPassword: function (token) {
             return Meteor.settings.base_url+"reset/" + token;
+        },
+        enrollAccount: function (token) {
+            return Meteor.settings.base_url+"enroll/" + token;
         }
     });
 
     Accounts.config(_.defaults({
+            sendVerificationEmail: true,       // TODO maybe we don't need it, if we use only enrollment email
             forbidClientAccountCreation: true,
             loginExpirationInDays: 7
         },

@@ -8,8 +8,9 @@ Meteor.startup(() => {
         Throttle.setDebugMode(true);              // Show debug messages
     }
 
-    setExtraUsers();
     configAccounts();
+    setExtraUsers();
+
 
 });
 
