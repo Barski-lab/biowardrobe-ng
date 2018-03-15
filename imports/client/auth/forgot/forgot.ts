@@ -34,13 +34,10 @@ export class BWForgot extends BWComponentBase {
                         // returns [error, result] as normal method call callback
                         // [undefined, undefined] - success
                         // [error, undefined] - failure
-                        let err = res[0];
-                        if (!err){
+                        if (!res[0]){
                             swal({title: 'Email was sent.', text:'Please check your email box for future instructions.', type: 'success', timer: 5000});
-                        } else if (err.error == 401){
-                            swal({title: "Access denied", text:"You are not allowed to reset password", type: 'warning', timer: 5000});
                         } else {
-                            swal({title: "Failed to reset password", text:"Make sure you set correct email", type: 'error', timer: 5000});
+                            swal({title: "Failed to reset password", text:res[0].reason, type: 'error', timer: 5000});
                         }
                     },
                     err => {
