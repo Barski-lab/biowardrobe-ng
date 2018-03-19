@@ -181,17 +181,17 @@ class FileStorageModule implements BaseModuleInterface {
         return this.getCookiesDefault()
             .then(
                 res => {
-                    Log.debug("getCookiesDefault success");
+                    // Log.debug("getCookiesDefault success");
                     return this.getCookies(res, params)
                 })
             .then(
                 res => {
-                    Log.debug("getCookies success");
+                    // Log.debug("getCookies success");
                     return this.getRawData(res)
                 })
             .then(
                 res => {
-                    Log.debug("getRawData success");
+                    // Log.debug("getRawData success");
                     return Promise.resolve(this.formFileList(res));
                 })
     }
@@ -326,7 +326,7 @@ class FileStorageModule implements BaseModuleInterface {
         parser.write(rawDataWithSession.rawData);
         parser.end();
 
-        Log.debug("formFileList success");
+        // Log.debug("formFileList success");
         return {files: fileList, cookies: rawDataWithSession.cookies._jar.toJSON()};
     }
 
