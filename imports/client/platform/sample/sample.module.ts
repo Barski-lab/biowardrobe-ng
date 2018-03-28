@@ -6,14 +6,17 @@ import { BWPlatformComponentsModule } from '../components/bwplatformcomponents.m
 import { CWLModule } from '../cwl/cwl.module'
 import { BWSampleService } from './sample.service';
 import { BWSampleEdit } from './edit/sampleedit'
+import { BWSampleList } from './list/samplelist'
 
 
 @NgModule({
     declarations: [
-        BWSampleEdit
+        BWSampleEdit,
+        BWSampleList
     ],
     exports: [
-        BWSampleEdit
+        BWSampleEdit,
+        BWSampleList
     ],
     imports: [
         CommonModule,
