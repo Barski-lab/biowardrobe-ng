@@ -64,7 +64,7 @@ export class BWCWLService extends BWServiceBase {
     }
 
     public getCWLs(params = {}):Observable<any> {
-        console.log ("getCWLs");
+        console.log ("getCWLs", params);
         return this.MeteorSubscribeAutorun("cwl/list", params, () => {
             let cwls = CWLs.find(params).fetch();
             return cwls;

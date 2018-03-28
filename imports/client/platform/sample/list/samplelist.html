@@ -1,0 +1,8 @@
+<div>
+    <bw-table [label]="Samples"
+              [data]="_data"
+              [columns]="_columns"
+              [clickable]="true"
+              (search)="onSearch($event)"
+              (rowClick)="onRowClick($event)"></bw-table>
+</div>

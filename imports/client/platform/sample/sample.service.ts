@@ -12,11 +12,11 @@ import { BWServiceBase, BWAccountService } from '../../lib';
 export class BWSampleService extends BWServiceBase {
 
     public getSample(params):Observable<any> {
-        if( Samples.findOne( {'_id': params._id}) ) {
-            return Observable.of(Samples.findOne( {'_id': params._id} ));
+        if( Samples.findOne(params) ) {
+            return Observable.of(Samples.findOne(params));
         } else
             return this.MeteorSubscribeAutorun("samples/get", params, () => {
-                return Samples.findOne( {'_id': params._id} )
+                return Samples.findOne(params)
             });
     }
 
@@ -26,6 +26,12 @@ export class BWSampleService extends BWServiceBase {
 
     public editSample (sampleId, params){
         return this.MeteorCall("samples/upsert", sampleId, params);
+    }
+
+    public getSampleAll():Observable<any> {
+        return this.MeteorSubscribeAutorun("samples/get", {}, () => {
+            return Samples.find({}).fetch()
+        });
     }
 
 }

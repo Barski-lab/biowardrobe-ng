@@ -8,6 +8,7 @@ import { BWTreeView } from './bwtreeview.component';
 import { BWCloudLoader } from './bwcloudloader.component';
 import { BWCloudLoaderDialog } from './bwcloudloaderdialog.component';
 import { BWCloudLoaderButton } from './bwcloudloaderbutton.component';
+import { BWTable } from './bwtable.component';
 
 import { BWUploadPanelModule } from './bwuploadpanel/bwuploadpanel.module';
 
@@ -111,7 +112,8 @@ const BW_COMPONENTS:Array<any> = [
     BWTreeView,
     BWCloudLoader,
     BWCloudLoaderDialog,
-    BWCloudLoaderButton
+    BWCloudLoaderButton,
+    BWTable
 ];
 
 const BW_MODULES:Array<any> = [
