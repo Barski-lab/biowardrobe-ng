@@ -14,19 +14,17 @@ import template from './samplelist.html';
 export class BWSampleList extends BWComponentBase implements AfterViewInit {
 
     private _data = [];
-    private _columns: ITdDataTableColumn[] = [
-        { name: 'cwl.metadata.alias',            label: 'Alias'},
-        { name: 'cwl.metadata.conditions',       label: 'Conditions'},
-        { name: 'cwl.metadata.cells',            label: 'Cells'},
-        { name: 'cwl.metadata.description',      label: 'Description'},
-        { name: 'cwl.metadata.catalog',          label: 'Catalog'},
-        { name: 'date.created',                  label: 'Created'},
-        { name: 'cwl.cwlLabel',                  label: 'Pipeline'}
-    ];
 
-    onSearch (payload){
-        console.log ("onSearch", payload);
-    }
+    // name field in _columns should be one level depth to allow use TdDataTableService
+    private _columns: ITdDataTableColumn[] = [
+        { name: 'alias',       label: 'Alias',       filter: true},
+        { name: 'conditions',  label: 'Conditions',  filter: true},
+        { name: 'cells',       label: 'Cells',       filter: true},
+        { name: 'description', label: 'Description', filter: true},
+        { name: 'catalog',     label: 'Catalog',     filter: true},
+        { name: 'created',     label: 'Created',     filter: true},
+        { name: 'cwlLabel',    label: 'Pipeline',    filter: true}
+    ];
 
     onRowClick (payload){
         this._router.navigate(['/platform/sample', {sample_id: payload.row._id}]);
@@ -42,9 +40,11 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
     }
 
     private _refactorSampleData(singleSampleData, cwlData){
-        singleSampleData.cwl["cwlLabel"] = cwlData.find(singleCwl => {return singleCwl["_id"] == singleSampleData.cwl.cwlId}).description.label;
-        singleSampleData.date.created = singleSampleData.date.created.toISOString().substr(0,10);
-        return singleSampleData;
+        let dataFormated = singleSampleData.cwl.metadata;
+        dataFormated["created"] = singleSampleData.date.created;
+        dataFormated["_id"] = singleSampleData["_id"];
+        dataFormated["cwlLabel"] = cwlData.find(singleCwl => {return singleCwl["_id"] == singleSampleData.cwl.cwlId}).description.label;
+        return dataFormated;
     }
 
     ngAfterViewInit() {
