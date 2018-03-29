@@ -22,7 +22,7 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
         { name: 'cells',       label: 'Cells',       filter: true},
         { name: 'description', label: 'Description', filter: true},
         { name: 'catalog',     label: 'Catalog',     filter: true},
-        { name: 'created',     label: 'Created',     filter: true},
+        { name: 'created',     label: 'Created',     filter: true, format: fullDate => fullDate.toISOString().substr(0,10) },
         { name: 'cwlLabel',    label: 'Pipeline',    filter: true}
     ];
 
