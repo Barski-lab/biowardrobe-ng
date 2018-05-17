@@ -145,6 +145,10 @@ Accounts.onLogin(function (login) {
     Meteor.users.update({_id: login.user._id }, { $set: ou });
 });
 
+Meteor.startup(() => {
+    process.env.MAIL_URL = Meteor.settings.email.url;
+});
+
 export function configAccounts(){
     Accounts.emailTemplates.siteName = Meteor.settings['name'];
     Accounts.emailTemplates.from = Meteor.settings.email.from;
