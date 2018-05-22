@@ -6,10 +6,9 @@ import { BWSampleService } from '../sample.service'
 import { BWCWLService } from '../../cwl/cwl.service'
 import { Router } from '@angular/router';
 
-import template from './samplelist.html';
 
 @Component({
-    template
+    templateUrl: './samplelist.html'
 })
 export class BWSampleList extends BWComponentBase implements AfterViewInit {
 

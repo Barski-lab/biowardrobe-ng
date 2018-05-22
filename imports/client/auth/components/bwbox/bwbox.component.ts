@@ -1,9 +1,8 @@
 import { Component, Input } from '@angular/core';
-import template from './bwbox.html';
 
 @Component({
     selector: 'bw-box',
-    template
+    templateUrl: './bwbox.html'
 })
 export class BWBox {
     @Input() title:string;

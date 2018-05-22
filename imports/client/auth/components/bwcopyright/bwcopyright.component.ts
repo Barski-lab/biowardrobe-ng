@@ -1,9 +1,8 @@
 import { Component } from '@angular/core';
-import template from './bwcopyright.html';
 
 @Component({
     selector: 'bw-copyright',
-    template
+    templateUrl: './bwcopyright.html'
 })
 export class BWCopyright {
 

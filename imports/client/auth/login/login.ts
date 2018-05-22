@@ -3,13 +3,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup } from '@angular/forms';
 
 import { BWInputEmail, BWInputPassword, BWValidators, BWComponentBase, BWAccountService } from '../../lib';
-import template from './login.html';
 
 import swal from 'sweetalert2';
 import '../../../../public/css/sweetalert2.css'
 
 @Component({
-    template
+    templateUrl: './login.html'
 })
 export class BWLogin extends BWComponentBase implements OnInit {
     public loginForm: FormGroup;

@@ -4,38 +4,37 @@
 # 'meteor add' and 'meteor remove' will edit this file for you,
 # but you can also edit it by hand.
 
-meteor-base@1.1.0             # Packages every Meteor app needs to have
+meteor-base@1.3.0             # Packages every Meteor app needs to have
 mobile-experience@1.0.5       # Packages for a great mobile UX
-mongo@1.2.3                   # The database Meteor supports right now
+mongo@1.4.2                   # The database Meteor supports right now
 session@1.1.7                 # Client-side reactive dictionary for your app
 reactive-var@1.0.11           # Reactive variable for tracker
 tracker@1.1.3                 # Meteor's client-side reactive programming library
-jquery@1.11.10                # Helpful client-side library
 
 standard-minifier-css   # CSS minifier run for production mode
 standard-minifier-js    # JS minifier run for production mode
-es5-shim@4.6.15               # ECMAScript 5 compatibility for older browsers.
+es5-shim@4.7.0                # ECMAScript 5 compatibility for older browsers.
+ecmascript@0.10.6            # Enable ECMAScript2015+ syntax in app code
 
-angular2-compilers
-barbatus:angular2-polyfills
+angular-compilers
 
-ongoworks:bunyan-logger
-check@1.2.5
+check@1.3.0
+ejson@1.1.0
+random@1.1.0
+
+accounts-password@1.5.0
 email@1.2.3
-accounts-password@1.4.0
 alanning:roles
-ejson@1.0.14
 service-configuration@1.0.11
 ddp-rate-limiter@1.0.7
-zeroasterisk:throttle
-zeroasterisk:throttle-accounts
 ostrio:files
 ostrio:aes-crypto
-random@1.0.10
+
+zeroasterisk:throttle
+zeroasterisk:throttle-accounts
+
+zuuk:stale-session
+xolvio:cleaner
+
 shell-server
 dynamic-import
-zuuk:stale-session
-meteortesting:mocha
-practicalmeteor:chai
-practicalmeteor:mocha
-xolvio:cleaner

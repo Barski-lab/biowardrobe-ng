@@ -4,13 +4,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { BWAccountService, BWValidators, BWInputPassword, BWComponentBase } from '../../lib';
 
-import template from './reset.html';
-
 import swal from 'sweetalert2';
 import '../../../../public/css/sweetalert2.css'
 
 @Component({
-    template
+    templateUrl: './reset.html'
 })
 export class BWReset extends BWComponentBase {
     token:string;

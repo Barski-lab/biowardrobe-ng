@@ -1,8 +1,7 @@
 import { Component } from '@angular/core';
-import template from './platform.html';
 
 @Component({
-    template
+    templateUrl: './platform.html'
 })
 export class BWPlatform {
     constructor() {}
