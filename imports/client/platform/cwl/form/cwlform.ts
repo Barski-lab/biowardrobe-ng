@@ -6,12 +6,10 @@ import { BWComponentBase } from '../../../lib'
 import { BWCWLService } from '../cwl.service'
 import { BWUploadService } from '../upload.service'
 
-import template from './cwlform.html';
-
 
 @Component({
     selector: 'bw-cwlform',
-    template
+    templateUrl: './cwlform.html'
 })
 export class BWCWLForm extends BWComponentBase {
 

@@ -1,5 +1,8 @@
+import '../imports/client/polyfills';
+
 import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+import { Meteor } from 'meteor/meteor';
 
 import { AppModule } from '../imports/client';
 

@@ -9,10 +9,9 @@ import { BWDraftService, BWComponentBase, MeteorObservable } from '../../../lib'
 import { BWSampleService } from '../sample.service'
 import { BWCWLService } from '../../cwl/cwl.service'
 
-import template from './sampleedit.html';
 
 @Component({
-    template
+    templateUrl: './sampleedit.html'
 })
 export class BWSampleEdit extends BWComponentBase implements AfterViewInit {
 

@@ -11,10 +11,6 @@ import { MatDialog } from "@angular/material";
 
 import { BWCancelDialog } from "./bwcanceldialog.component";
 
-import template from "./bwuploadpanel.html"
-
-import style from "./bwuploadpanel.scss"
-
 export enum UploadStatus{
     PICK_FILE = 0,
     CONFIRM_PICK = 1,
@@ -28,8 +24,8 @@ type UploadStatusString = "PICK_FILE" | "CONFIRM_PICK" | "UPLOADING" | "DONE" | 
 
 @Component({
     selector: 'bw-uploadpanel',
-    template,
-    styles: [style]
+    templateUrl: "./bwuploadpanel.html",
+    styleUrls: [ "./bwuploadpanel.scss" ]
 })
 export class BWUploadPanel{
     //Useful Constants

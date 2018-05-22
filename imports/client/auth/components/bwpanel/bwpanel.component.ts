@@ -1,9 +1,8 @@
 import { Component } from '@angular/core';
-import template from './bwpanel.html';
 
 @Component({
     selector: 'bw-panel',
-    template
+    templateUrl: './bwpanel.html'
 })
 
 export class BWPanel{}

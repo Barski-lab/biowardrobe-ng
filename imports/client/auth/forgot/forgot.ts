@@ -3,14 +3,13 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 
 import { BWAccountService, BWInputEmail, BWComponentBase } from '../../lib';
 
-import template from './forgot.html'
 
 import swal from 'sweetalert2';
 import '../../../../public/css/sweetalert2.css'
 
 
 @Component({
-    template
+    templateUrl: './forgot.html'
 })
 export class BWForgot extends BWComponentBase {
     forgotForm: FormGroup;

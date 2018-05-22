@@ -1,11 +1,10 @@
 import { Component, Input, ViewChild, ElementRef } from '@angular/core';
 
 import { BWInput } from '../../../lib';
-import template from './bwtextinput.html';
 
 @Component({
     selector: 'bw-textinput',
-    template
+    templateUrl: './bwtextinput.html'
 })
 
 export class BWTextInput {
