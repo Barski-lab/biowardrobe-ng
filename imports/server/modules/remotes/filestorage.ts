@@ -49,6 +49,7 @@ class FileStorageModule implements BaseModuleInterface {
     private routes = undefined;
 
     private encrypt (data: string, key: string, iv: string){
+        if( !iv || !key ) { return; }
         // key should be UTF-8 string 16 characters long
         // let iv = key.split("").reverse().join("");
         let cipher = crypto.createCipheriv('aes-128-cbc',
@@ -59,6 +60,7 @@ class FileStorageModule implements BaseModuleInterface {
     }
 
     private decrypt (data: string, key: string, iv: string){
+        if( !iv || !key ) { return; }
         // key should be UTF-8 string 16 characters long
         // let iv = key.split("").reverse().join("");
         let decipher = crypto.createDecipheriv('aes-128-cbc',
