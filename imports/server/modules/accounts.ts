@@ -146,7 +146,9 @@ Accounts.onLogin(function (login) {
 });
 
 Meteor.startup(() => {
-    process.env.MAIL_URL = Meteor.settings.email.url;
+    if(Meteor.settings.email && Meteor.settings.email.url) {
+        process.env.MAIL_URL = Meteor.settings.email.url;
+    }
 });
 
 export function configAccounts(){
@@ -155,9 +157,11 @@ export function configAccounts(){
 
     Accounts['urls'] = _.extend(Accounts['urls'],{
         resetPassword: function (token) {
+            Log.debug('resetPassword: ' + Meteor.settings.base_url+"reset/" + token);
             return Meteor.settings.base_url+"reset/" + token;
         },
         enrollAccount: function (token) {
+            Log.debug('enrollAccount: ' + Meteor.settings.base_url+"enroll/" + token);
             return Meteor.settings.base_url+"enroll/" + token;
         }
     });

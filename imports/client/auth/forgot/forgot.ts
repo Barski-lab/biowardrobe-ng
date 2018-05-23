@@ -1,11 +1,10 @@
-import { Component } from '@angular/core';
+import {Component, NgZone} from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 
 import { BWAccountService, BWInputEmail, BWComponentBase } from '../../lib';
 
 
-import swal from 'sweetalert2';
-import '../../../../public/css/sweetalert2.css'
+import {TdDialogService} from "@covalent/core";
 
 
 @Component({
@@ -16,12 +15,18 @@ export class BWForgot extends BWComponentBase {
 
     constructor (
         protected _accounts: BWAccountService,
-        protected _fb:FormBuilder
+        protected _fb:FormBuilder,
+        protected _zone: NgZone,
+        protected _dialogService: TdDialogService
     ) {
         super();
         this.forgotForm = _fb.group({
             email: new BWInputEmail('Email',true)
         });
+
+        if(localStorage.getItem('corporateEmail') !== "") {
+            this.forgotForm.controls['email'].setValue(localStorage.getItem('corporateEmail'), {emitEvent: false});
+        }
     }
 
     submit() {
@@ -33,11 +38,14 @@ export class BWForgot extends BWComponentBase {
                         // returns [error, result] as normal method call callback
                         // [undefined, undefined] - success
                         // [error, undefined] - failure
-                        if (!res[0]){
-                            swal({title: 'Email was sent.', text:'Please check your email box for future instructions.', type: 'success', timer: 5000});
-                        } else {
-                            swal({title: "Failed to reset password", text:res[0].reason, type: 'error', timer: 5000});
-                        }
+                        this._zone.run(() => {
+                            if (!res[0]){
+                                this._dialogService.openAlert({title: 'Email was sent.', message: 'Please check your email box for future instructions.'});
+                            } else {
+                                this._dialogService.openAlert({title: "Failed to reset password", message: res[0].reason});
+                            }
+                        });
+
                     },
                     err => {
                         console.log (err)
