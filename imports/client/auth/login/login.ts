@@ -5,6 +5,10 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 import { BWInputEmail, BWInputPassword, BWValidators, BWComponentBase, BWAccountService } from '../../lib';
 
 import {TdDialogService} from "@covalent/core";
+import {Session} from "meteor/session";
+import {Tracker} from "meteor/tracker";
+import {switchMap} from "rxjs/operators";
+import {Observable} from "rxjs/Observable";
 
 @Component({
     templateUrl: './login.html'
@@ -31,32 +35,46 @@ export class BWLogin extends BWComponentBase implements OnInit {
 
     ngOnInit() {
 
-        this._route.queryParams.subscribe(params => {
-            this.params = params;
-            if(!!this.params.email){
-                this.loginForm.controls['email'].setValue(this.params.email, {emitEvent: false});
-            } else {
-                if(localStorage.getItem('corporateEmail') !== "") {
-                    this.loginForm.controls['email'].setValue(localStorage.getItem('corporateEmail'), {emitEvent: false});
+        this.tracked = this._route.queryParams.pipe(
+            switchMap((params) => {
+                this.params = params;
+                if(!!this.params.email){
+                    this.loginForm.controls['email'].setValue(this.params.email, {emitEvent: false});
+                } else {
+                    if(localStorage.getItem('corporateEmail') !== "") {
+                        this.loginForm.controls['email'].setValue(localStorage.getItem('corporateEmail'), {emitEvent: false});
+                    }
                 }
-            }
-
-            Tracker.autorun((c) => {
-                let user = Meteor.user();
-                if(user && user._id && this.params && this.params.client_id) {
-                    c.stop();
-                    this.post('',{
+                return this._accounts.account$;
+            })
+        ).subscribe( (c) => {
+            console.log(c, c.isLoggedIn);
+            if (c.isLoggedIn) {
+                if(this.params && this.params.client_id) {
+                    this.post('', {
                         "allow": 'yes',
                         "token": localStorage.getItem('Meteor.loginToken'),
                         "client_id": this.params.client_id,
                         "redirect_uri": this.params.redirect_uri,
                         "response_type": "code",
-                        "state":this.params.state
+                        "state": this.params.state
                     });
-                } else if (user && user._id) {
-                    this._router.navigate(['/authorized']);
+                } else {
+                    if (c['redirected']) { return; }
+                    c['redirected'] = true;
+                    Tracker.nonreactive(() => {
+                        this._zone.run(() => {
+                            const url = Session.get('lastNavigationAttempt');
+                            if (url) {
+                                Session.set('lastNavigationAttempt', null);
+                                this._router.navigateByUrl(url);
+                            } else {
+                                this._router.navigate(['/authorized']);
+                            }
+                        });
+                    });
                 }
-            });
+            }
         });
     }
 
