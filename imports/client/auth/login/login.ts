@@ -4,8 +4,7 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 
 import { BWInputEmail, BWInputPassword, BWValidators, BWComponentBase, BWAccountService } from '../../lib';
 
-import swal from 'sweetalert2';
-import '../../../../public/css/sweetalert2.css'
+import {TdDialogService} from "@covalent/core";
 
 @Component({
     templateUrl: './login.html'
@@ -20,6 +19,7 @@ export class BWLogin extends BWComponentBase implements OnInit {
         protected _router:Router,
         protected _zone: NgZone,
         protected _accounts: BWAccountService,
+        protected _dialogService: TdDialogService
     ) {
         super();
         this.loginForm = _fb.group({
@@ -89,8 +89,13 @@ export class BWLogin extends BWComponentBase implements OnInit {
             this.tracked = this._accounts.login(this.loginForm.controls['email'].value, this.loginForm.controls['password'].value)
                 .subscribe(
                     res => {
+                        console.log (res);
                         // return undefined - success or Object.error - failed
-                        !!res && swal({title: 'Incorrect credentials', text: res.reason, type: 'error', timer: 5000});
+                        if(res[0]) {
+                            this._zone.run(() => {
+                                this._dialogService.openAlert({title: 'Incorrect credentials', message: res[0].message});
+                            });
+                        }
                     },
                     err => {
                         console.log (err)

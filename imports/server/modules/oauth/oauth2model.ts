@@ -5,8 +5,14 @@ import { AccessTokens, RefreshTokens, AuthCodes } from '../../../collections/ser
 export class oauth2Model {
 
 
+    static cleanUp (accessTokenLifetime?, refreshTokenLifetime?, authCodeLifetime?) {
+        AccessTokens.remove({expires: { $lt: new Date() }});
+        RefreshTokens.remove({expires: { $lt: new Date() }});
+        AuthCodes.remove({expires: { $lt: new Date() }});
+    }
+
     getAccessToken =  Meteor.bindEnvironment((bearerToken, callback) => {
-            var e, token;
+            let e, token;
             Log.debug('[OAuth2Server]: in getAccessToken (bearerToken:', bearerToken, ')');
             try {
                 token = AccessTokens.findOne({
@@ -23,15 +29,15 @@ export class oauth2Model {
     );
 
     static getClientFromSettings(clientId) {
-        return _.find(Meteor.settings['oauth2server'].clients,e => e.clientId === clientId)
+        return _.find(Meteor.settings['oauth2server'].clients,(e: any) => e.clientId === clientId)
     }
 
     getClient = Meteor.bindEnvironment((clientId, clientSecret, callback) => {
-            Log.debug('[OAuth2Server]', 'in getClient (clientId:', clientId, ', clientSecret:', clientSecret, ')',oauth2Model.getClientFromSettings(clientId));
-            let clnt:any = oauth2Model.getClientFromSettings(clientId);
+            let clnt: any = oauth2Model.getClientFromSettings(clientId);
+            Log.debug(`[OAuth2Server] in getClient (clientId: ${clientId}, clientSecret: ${clientSecret})`, clnt);
             if ( clnt &&
                 ( clientSecret == null || clientSecret == "" || clnt.clientSecret == clientSecret )
-            ){
+            ) {
                 Log.debug('[OAuth2Server] in getClient : client is found');
                 return callback(null, clnt);
             }
@@ -48,8 +54,8 @@ export class oauth2Model {
     );
 
     saveAccessToken = Meteor.bindEnvironment((token, clientId, expires, user, callback) => {
-            var e, tokenId;
-            Log.debug('[OAuth2Server]', 'in saveAccessToken (token:', token, ', clientId:', clientId, ', user:', user, ', expires:', expires, ')');
+            let e, tokenId;
+            Log.debug(`[OAuth2Server] in saveAccessToken (token: ${token}, clientId: ${clientId}, user: ${user}, expires: ${expires})`);
             try {
                 tokenId = AccessTokens.insert({
                     accessToken: token,

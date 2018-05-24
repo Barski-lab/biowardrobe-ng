@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import {Component, NgZone} from '@angular/core';
 import { Router } from '@angular/router';
 
 
@@ -7,10 +7,13 @@ import { Router } from '@angular/router';
 })
 export class BWLogout {
     constructor(
-        protected _router: Router
+        protected _router: Router,
+        protected _zone: NgZone
     ) {
-        Meteor.logout(()=>{
-            this._router.navigate(['/oauth/authorize']);
+        Meteor.logout(() => {
+            this._zone.run(() => {
+                this._router.navigate(['/']);
+            });
         });
     }
 }

@@ -29,23 +29,27 @@ export class Auth2 {
         this.app.use(bodyParser.json());
         this.initRoutes ();
 
+        Meteor.setInterval(() => {
+            oauth2Model.cleanUp();
+        }, 1000*60*10);
+
         WebApp.rawConnectHandlers.use(this.app);
     }
 
     debugMiddle(req, res, next) {
-        Log.debug('[OAuth2Server]:',req.method, req.url, req.body, req.user);
+        Log.debug('[OAuth2Server]:', req.method, req.url, req.body, req.user);
         return next();
     };
 
     initRoutes(){
-        var self = this;
+        let self = this;
 
         this.app.all('/oauth/token',this.debugMiddle, this.oauthserver.grant());
 
         this.app.get('/oauth/authorize', this.debugMiddle, Meteor.bindEnvironment(
             (req, res, next) => {
-                Log.debug('[OAuth2Server req]:',req.query);
-                Log.debug('[OAuth2Server settings]:',oauth2Model.getClientFromSettings(req.query.client_id));
+                Log.debug('[OAuth2Server req]:', req.query);
+                Log.debug('[OAuth2Server settings]:', oauth2Model.getClientFromSettings(req.query.client_id));
                 if ( !oauth2Model.getClientFromSettings(req.query.client_id) ) {
                     return res.redirect('/oauth/error/404');
                 }
@@ -64,7 +68,7 @@ export class Auth2 {
                 if (!user) {
                     return res.sendStatus(401).send('Invalid token');
                 }
-                req.query.state = req.body.state+"&domain="+Meteor.settings['oauth2server'].domain;
+                req.query.state = req.body.state + "&domain=" + Meteor.settings['oauth2server'].domain;
                 req.user = {
                     id: user._id
                 };
