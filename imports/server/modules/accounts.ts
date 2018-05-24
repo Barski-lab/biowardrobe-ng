@@ -33,7 +33,12 @@ Accounts.registerLoginHandler("biowardrobeng", function (request) {
     let update = {};
     let nm, result:any = {success:false};
 
-    if(Meteor.settings['ldap'] && Meteor.settings['ldap']['url'].length>0 && domain == Meteor.settings['oauth2server']['domain']) {
+    if(Meteor.settings['ldap']
+        && Meteor.settings['ldap']['url']
+        && Meteor.settings['ldap']['url'].length>0
+        && domain == Meteor.settings['oauth2server']['domain']
+    ) {
+
         let _ldap:any = new LDAPClient(Meteor.settings['ldap']);
         let ldap_response = _ldap.auth(_email, _pass);
 
@@ -58,7 +63,7 @@ Accounts.registerLoginHandler("biowardrobeng", function (request) {
 
         if(result.success == false && domain == Meteor.settings['oauth2server']['domain']) {
             Log.debug('BioWardrobe-NG login unauthorized');
-            // throw new Meteor.Error(403, "LDAP User not found");
+            throw new Meteor.Error(403, "LDAP User not found");
         }
 
         if(result.success) {
