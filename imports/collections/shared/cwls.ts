@@ -1,8 +1,8 @@
 import { Mongo } from 'meteor/mongo';
 
-export const CWLs = new Mongo.Collection('cwls');
+export const CWLCollection = new Mongo.Collection('CWL');
 
-CWLs.deny({
+CWLCollection.deny({
     insert: function () {
         return true;
     },
