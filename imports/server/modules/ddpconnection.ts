@@ -11,7 +11,7 @@ import { switchMap, combineAll } from 'rxjs/operators';
 import { merge } from 'rxjs/observable/merge';
 import { combineLatest } from 'rxjs/observable/combineLatest';
 
-import { CWLCollection } from '../../collections/shared'
+import { CWLCollection, Drafts } from '../../collections/shared'
 
 import { Log } from './logger';
 
@@ -33,11 +33,103 @@ export class DDPConnection {
         }
     }
 
+    private _do_connect() {
+        if(!DDPConnection.DDPConnection) {
+            DDPConnection.DDPConnection = DDP.connect(Meteor.settings.rc_server);
+            Log.debug ("Setting DDP connection to", Meteor.settings.rc_server);
+        }
+
+        let x = this.onReconnect()
+            .pipe(
+                switchMap((v) => {
+                    Log.info("Reconnecting");
+                    return DDPConnection.call('satellite/auth', Meteor.settings.rc_server_token);
+                }),
+                switchMap((v) => {
+                    return combineLatest(this._usersSubs(), this._cwlSubs())
+                })
+            )
+            .subscribe((c) => {
+                Log.debug("Users and CWL are ready");
+            });
+    }
+
+    private onReconnect<T>(): Observable<T> {
+        return fromEventPattern(DDP['onReconnect'],() => {});
+    }
+
+    private _usersSubs(): any {
+        return this._observeChanges('satellite/users', 'users', null, {
+            // TODO: Has to organize it into a stream, somehow.
+            added(id, fields) {
+                Log.debug(`satellite/users/added:`, id, fields);
+                const _user = Drafts.findOne({ "emails.address": new RegExp(`${fields.emails[0].address}`, 'i') });
+
+                if(! _user) {
+                    delete fields['request'];
+                    let _n_id = Drafts.insert(fields);
+                    DDPConnection.call('satellite/user/remote/id',fields.emails[0].address,  _n_id)
+                        .subscribe((v)=>{
+                            Log.debug("Id changed", fields.emails[0].address, _n_id, v);
+                        });
+                } else
+                if( fields['request']['id']) {
+                    Log.debug('Call for adding id', fields.emails[0].address, id);
+
+                    DDPConnection.call('satellite/user/remote/id',fields.emails[0].address,  _user._id)
+                        .subscribe((v)=>{
+                            Log.debug("Id changed", fields.emails[0].address, _user._id, v);
+                        });
+                } else
+                if(_user && _user._id != id ) {
+                    Log.debug('Call for change of id', id, _user._id);
+                    DDPConnection.call('satellite/user/id/change', id, _user._id).subscribe((v)=>{
+                        Log.debug("Id changed", id, _user._id, v);
+                    });
+                }
+            }
+        });
+    }
+
+    private _cwlSubs(): any {
+        return this._observeChanges('satellite/cwls', 'CWL', CWLCollection);
+    }
+
+    private _observeChanges(_subscription, _remote_collection_name, _collection?, _callbacks?) {
+        _callbacks = _callbacks || {
+            added(id, fields) {
+                Log.debug(`${_remote_collection_name}/added:`, id, _.keys(fields));
+                if(_collection) {
+                    _collection.update({_id: id}, fields, {upsert: true});
+                }
+            },
+            changed(id, fields) {
+                Log.debug(`${_remote_collection_name}/changed:`, id, _.keys(fields));
+                if(_collection) {
+                    _collection.update({_id: id}, fields, {upsert: true});
+                }
+            },
+            removed(id) {
+                Log.debug(`${_remote_collection_name}/removed:`, id);
+            }
+        };
+        return DDPConnection.subscribeAutorun(_subscription,() => {
+            let _c_coll = new Mongo.Collection(_remote_collection_name, rc_connection);
+            return _c_coll.find().observeChanges(_callbacks);
+        });
+    }
+
+    /**
+     * Call a method on remote server
+     * @param {string} name
+     * @param args
+     * @returns {Observable<T>}
+     */
     public static call<T>(name: string, ...args: any[]): Observable<T> {
         const lastParam = args[args.length - 1];
 
         if (isMeteorCallbacks(lastParam)) {
-            throw Error('MeteorObservable.call');
+            throw Error('MeteorObservable.call, callback will be provided');
         }
 
         return Observable.create((observer: Subscriber<Meteor.Error | T>) => {
@@ -64,81 +156,11 @@ export class DDPConnection {
         });
     }
 
-    private _do_connect() {
-        if(!DDPConnection.DDPConnection) {
-            DDPConnection.DDPConnection = DDP.connect(Meteor.settings.rc_server);
-            Log.debug ("Setting DDP connection to", Meteor.settings.rc_server);
-        }
-
-        let x = this.onReconnect()
-            .pipe(
-                switchMap((v) => {
-                    Log.info("Reconnecting");
-                    return DDPConnection.call('satellite/auth', Meteor.settings.rc_server_token);
-                }),
-                switchMap((v) => {
-                    return combineLatest(this._draftSubs(), this._cwlSubs())
-                })
-            )
-            .subscribe((c) => {
-                Log.debug("Start subscriptions?", c);
-            });
-    }
-
-    private onReconnect<T>(): Observable<T> {
-        return fromEventPattern(DDP['onReconnect'],() => {});
-    }
-
-    private _draftSubs(): any {
-        return DDPConnection.subscribeAutorun('satellite/drafts',() => {
-            let drafts = new Mongo.Collection('platform_drafts', {connection: DDPConnection.DDPConnection,  _suppressSameNameError: true });
-            const handler = drafts.find().observeChanges({
-                added(id, fields) {
-                    Log.info("Drafts/added:", id, _.keys(fields));
-                },
-                changed(id, fields) {
-                    Log.info("Drafts/changed:", id, _.keys(fields));
-                },
-                removed(id) {
-                    Log.info("Drafts/removed:", id);
-                }
-            });
-            return drafts.find().fetch();
-        });
-    }
-
-    private _cwlSubs(): any {
-        return DDPConnection.subscribeAutorun('satellite/cwls',() => {
-            let cwls = new Mongo.Collection('CWL', { connection: DDPConnection.DDPConnection,  _suppressSameNameError: true });
-            const handler = cwls.find().observeChanges({
-                added(id, fields) {
-                    Log.info("CWL/added:", id, _.keys(fields));
-                    fields['_id'] = id;
-                    CWLCollection.insert(fields);
-                },
-                changed(id, fields) {
-                    Log.info("CWL/changed:", id, _.keys(fields));
-                    CWLCollection.update({_id: id}, fields);
-                },
-                removed(id) {
-                    Log.info("CWL/removed:", id);
-                }
-            });
-            return handler;
-        });
-    }
-
-    public static addMessage (newMsg){
-        Log.debug('addMessage', newMsg);
-        // DDPConnection._messages.active.push (newMsg);
-        // DDPConnection._messages.backup.push (newMsg);
-    }
-
     public static subscribeAutorun<T>(name: string, ...args: any[]): Observable<T> {
         let lastParam = args[args.length - 1];
 
         if (!_.isFunction(lastParam)) {
-            console.log('last param has to be a function');
+            Log.debug('last param has to be a function');
             return;
         }
         let _args = args.slice(0, args.length - 1);
@@ -147,23 +169,18 @@ export class DDPConnection {
         let autoHandler = null;
         let subHandler = null;
         return Observable.create((observer: Subscriber<Meteor.Error | T>) => {
-            // Execute subscribe lazily.
             if (subHandler === null) {
                 subHandler = DDPConnection.DDPConnection.subscribe(name, ..._args.concat([{
                     onError: (error: Meteor.Error) => {
                         observer.error(error);
                     },
                     onReady: () => {
-                        // autoHandler = Tracker.autorun((computation: Tracker.Computation) => {
-                            let autoHandler = lastParam(subHandler);
-                            observer.next(autoHandler)
-                            // Tracker.nonreactive(() => );
-                            // observer.next(lastParam(computation));
-                        // });
+                        autoHandler = lastParam(subHandler);
+                        observer.next(autoHandler)
                     },
                     onStop: () => {
-                        if (autoHandler && autoHandler.stop) {
-                            Log.debug('hendler, has a stop!')
+                        if (autoHandler && autoHandler['stop']) {
+                            Log.debug('handler, has a stop!');
                             autoHandler.stop();
                         }
                     }
@@ -175,6 +192,13 @@ export class DDPConnection {
             };
         });
     }
+
+    public static addMessage (newMsg){
+        Log.debug('addMessage', newMsg);
+        // DDPConnection._messages.active.push (newMsg);
+        // DDPConnection._messages.backup.push (newMsg);
+    }
+
 
     /*
     private _do_init() {
@@ -296,12 +320,13 @@ export class DDPConnection {
         }
     }
 
-    public get connection(){
+    public static get connection(){
         return DDPConnection.DDPConnection;
     }
 }
 
 export const connection = new DDPConnection();
+export const rc_connection: any = {connection: DDPConnection.connection,  _suppressSameNameError: true };
 
 ////// HELPER FUNCTIONS
 export interface CallbacksObject {
