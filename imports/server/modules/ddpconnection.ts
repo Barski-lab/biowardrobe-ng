@@ -11,7 +11,7 @@ import { switchMap, combineAll } from 'rxjs/operators';
 import { merge } from 'rxjs/observable/merge';
 import { combineLatest } from 'rxjs/observable/combineLatest';
 
-import { CWLCollection, Drafts } from '../../collections/shared'
+import { CWLCollection, Drafts, Labs, Projects } from '../../collections/shared'
 
 import { Log } from './logger';
 
@@ -47,6 +47,9 @@ export class DDPConnection {
                 }),
                 switchMap((v) => {
                     return combineLatest(this._usersSubs(), this._cwlSubs())
+                }),
+                switchMap((v) => {
+                    return combineLatest(this._labsSubs(), this._projectsSubs())
                 })
             )
             .subscribe((c) => {
@@ -62,30 +65,25 @@ export class DDPConnection {
         return this._observeChanges('satellite/users', 'users', null, {
             // TODO: Has to organize it into a stream, somehow.
             added(id, fields) {
-                Log.debug(`satellite/users/added:`, id, fields);
-                const _user = Drafts.findOne({ "emails.address": new RegExp(`${fields.emails[0].address}`, 'i') });
+
+                const _email = fields.emails[0].address.toLowerCase();
+                const _user = Meteor.users.findOne({ "emails.address": new RegExp(`${_email}`, 'i') });
 
                 if(! _user) {
-                    delete fields['request'];
-                    let _n_id = Drafts.insert(fields);
-                    DDPConnection.call('satellite/user/remote/id',fields.emails[0].address,  _n_id)
-                        .subscribe((v)=>{
-                            Log.debug("Id changed", fields.emails[0].address, _n_id, v);
-                        });
-                } else
-                if( fields['request']['id']) {
-                    Log.debug('Call for adding id', fields.emails[0].address, id);
-
-                    DDPConnection.call('satellite/user/remote/id',fields.emails[0].address,  _user._id)
-                        .subscribe((v)=>{
-                            Log.debug("Id changed", fields.emails[0].address, _user._id, v);
-                        });
+                    Log.debug(`satellite/users/added:`, id, fields);
+                    fields["_id"] = id;
+                    Meteor.users.insert(fields);
                 } else
                 if(_user && _user._id != id ) {
-                    Log.debug('Call for change of id', id, _user._id);
-                    DDPConnection.call('satellite/user/id/change', id, _user._id).subscribe((v)=>{
-                        Log.debug("Id changed", id, _user._id, v);
-                    });
+                    Log.info('Replace old user:', id, _user._id);
+                    Meteor.users.remove({_id: _user._id});
+                    _user['old_id'] = _user['old_id'] || [];
+                    _user['old_id'].push(_user._id);
+                    _user['_id'] = id;
+                    _user['roles'] = fields['roles'];
+                    _user['profile'] = fields['profile'];
+                    _user['emails'] = fields['emails'];
+                    Meteor.users.insert(_user);
                 }
             }
         });
@@ -93,6 +91,14 @@ export class DDPConnection {
 
     private _cwlSubs(): any {
         return this._observeChanges('satellite/cwls', 'CWL', CWLCollection);
+    }
+
+    private _labsSubs(): any {
+        return this._observeChanges('satellite/labs', 'labs', Labs);
+    }
+
+    private _projectsSubs(): any {
+        return this._observeChanges('satellite/projects', 'projects', Projects);
     }
 
     private _observeChanges(_subscription, _remote_collection_name, _collection?, _callbacks?) {
@@ -180,7 +186,7 @@ export class DDPConnection {
                     },
                     onStop: () => {
                         if (autoHandler && autoHandler['stop']) {
-                            Log.debug('handler, has a stop!');
+                            Log.debug('observeChanges stop subscription!', autoHandler.collection.name);
                             autoHandler.stop();
                         }
                     }
