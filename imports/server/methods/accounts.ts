@@ -18,6 +18,7 @@ Meteor['default_server'].method_handlers['forgotPassword'] = function (options) 
     if(!domain) throw new Meteor.Error(500, "Cannot get the domain name from email");
 
     if (Meteor.settings['ldap'] &&
+        Meteor.settings['ldap']['url'] &&
         Meteor.settings['ldap']['url'].length>0 &&
         Meteor.settings['oauth2server'] &&
         domain == Meteor.settings['oauth2server']['domain']) {
