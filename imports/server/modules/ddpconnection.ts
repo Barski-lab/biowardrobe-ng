@@ -8,18 +8,21 @@ import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
 import { fromEvent } from 'rxjs/observable/fromEvent';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
 import { switchMap, combineAll } from 'rxjs/operators';
+import { Subject } from 'rxjs/Subject';
 import { merge } from 'rxjs/observable/merge';
 import { combineLatest } from 'rxjs/observable/combineLatest';
 
 import { CWLCollection, Drafts, Labs, Projects } from '../../collections/shared'
 
 import { Log } from './logger';
-
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 
 export class DDPConnection {
     private static DDPConnection: DDP.DDPStatic = null;
     private static _hooks = {};
     private static _messages = {active: [], backup : []};
+
+    public static sync$ = new BehaviorSubject(null);
 
     private _satelite_ch;
 
@@ -52,9 +55,7 @@ export class DDPConnection {
                     return combineLatest(this._labsSubs(), this._projectsSubs())
                 })
             )
-            .subscribe((c) => {
-                Log.debug("Users and CWL are ready");
-            });
+            .subscribe(DDPConnection.sync$);
     }
 
     private onReconnect<T>(): Observable<T> {
