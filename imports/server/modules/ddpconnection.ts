@@ -77,7 +77,6 @@ export class DDPConnection {
                 } else
                 if(_user && _user._id != id ) {
                     Log.info('Replace old user:', id, _user._id);
-                    Meteor.users.remove({_id: _user._id});
                     _user['old_id'] = _user['old_id'] || [];
                     _user['old_id'].push(_user._id);
                     _user['_id'] = id;
@@ -85,6 +84,7 @@ export class DDPConnection {
                     _user['profile'] = fields['profile'];
                     _user['emails'] = fields['emails'];
                     Meteor.users.insert(_user);
+                    Meteor.users.remove({_id: _user._id});
                 }
             }
         });

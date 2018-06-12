@@ -1,27 +1,28 @@
 import { Meteor } from 'meteor/meteor';
+
+import {
+    switchMap,
+    filter,
+    take,
+    catchError,
+    concatAll,
+    takeLast
+} from 'rxjs/operators';
+import { of } from 'rxjs/observable/of';
+
 import { DDPConnection } from '../ddpconnection';
 
 import {
     BioWardrobeMySQL,
-    get_experiments,
-    get_laboratories,
-    get_egroupr,
-    get_egroups,
-    get_genome,
-    get_workers,
-    get_antibodies
 } from './biowardrobemysql';
 
 import { Log } from '../logger';
-import { switchMap, filter, take, catchError, concatAll, mergeAll} from 'rxjs/operators';
-import { of } from 'rxjs/observable/of';
+import {Labs, Projects} from '../../../collections/shared';
 
-
-import { Labs } from '../../../collections/shared';
 
 // delete Package.webapp.main;
 
-let labs = new Mongo.Collection('biowardrobe_import_labs');
+// let labs = new Mongo.Collection('biowardrobe_import_labs');
 // let billingc = new Mongo.Collection('biowardrobe_import_billing');
 // let pricingc = new Mongo.Collection('biowardrobe_import_pricing');
 let projects = new Mongo.Collection('biowardrobe_import_projects');
@@ -83,110 +84,100 @@ Meteor.startup( () => {
             ),
         BioWardrobeMySQL.getWorkers(Meteor.settings["oauth2server"]["domain"])
             .pipe(
-                switchMap( (ws) => {
-                        let _obs = [of([])];
-
-                        _.each(ws[0], (w) => {
-
-                            let email = w['email'].toLowerCase();
-                            if (!email || email.length === 0) return;
-                            if (!email.endsWith(Meteor.settings["oauth2server"]["domain"])) return;
-
-                            if (!Meteor.users.findOne({'emails.address': email})) {
-                                Log.debug('Call createUser', w['fname'], w['lname'], email);
-                                _obs.push(DDPConnection.call('satellite/accounts/createUser', w['fname'], w['lname'], email))
-                            }
-                        });
-
-                        return of(..._obs);
+                switchMap( (ws) => of(...ws[0])),
+                filter((w) => {
+                    const email = w['email'].toLowerCase();
+                    return (email && email.length !== 0 && email.endsWith('@' + Meteor.settings["oauth2server"]["domain"]));
+                }),
+                switchMap((w) => {
+                    const email = w['email'].toLowerCase();
+                    const user = Meteor.users.findOne({'emails.address': email});
+                    if (!user) {
+                        Log.debug('Call createUser', w['fname'], w['lname'], email);
+                        return DDPConnection.call('satellite/accounts/createUser', w['fname'], w['lname'], email);
                     }
-                ),
-                mergeAll(),
+                    return of(user['_id']);
+                }, (biowardrobeRecord, userId, outerIndex, innerIndex) => ({userId, biowardrobeRecord})),
+                switchMap((val) => {
+                    const w = val.biowardrobeRecord;
+                    Meteor.users.update({_id: val.userId}, {
+                        $set: {
+                            biowardrobe_import: {
+                                laboratory_id: w['laboratory_id'],
+                                admin: w['admin'],
+                                laboratory_owner: w['changepass']
+                            }
+                        }}, {upsert: true});
+                    return of(val);
+                }),
+                takeLast(1),
                 catchError((e) => of({error: true, message: `Create user: ${e}`}))
             ),
-        BioWardrobeMySQL.getWorkers(Meteor.settings["oauth2server"]["domain"])
-            .pipe(
-                switchMap( (ws) => {
-
-                        _.each(ws[0], (w) => {
-
-                            let email = w['email'].toLowerCase();
-                            if (!email || email.length === 0) return;
-                            if (!email.endsWith(Meteor.settings["oauth2server"]["domain"])) return;
-                            const user = Meteor.users.findOne({'emails.address': email});
-                            if (!user) {
-                                Log.Error('Must be in the list already', w['fname'], w['lname'], email);
-                            }
-
-                            Meteor.users.update({_id: user._id}, {
-                                $set: {
-                                    biowardrobe_import: {
-                                        laboratory_id: w['laboratory_id'],
-                                        admin: w['admin'],
-                                        laboratory_owner: w['changepass']
-                                    }
-                                }})
-                        });
-
-                        return of([]);
-                    }
-                ),
-                catchError((e) => of({error: true, message: `Update users: ${e}`}))
-            ),
         BioWardrobeMySQL.getLaboratories()
             .pipe(
-                switchMap( (ls) => {
-                        let _obs = [of([])];
-
-                        _.each(ls[0], (l) => {
-                            const user = Meteor.users.findOne(
-                                { $and:[
-                                        {'biowardrobe_import.laboratory_id': l.id},
-                                        {'biowardrobe_import.laboratory_owner':1}
-                                    ]
-                                });
-                            if (!user) { return; }
-
-                            const lab = Labs.findOne({"owner._id": user._id});
-                            if(!lab) {
-                                Log.debug('Add lab:', user, l.name);
-                                _obs.push(DDPConnection.call('satellite/accounts/createLab', user._id, l.name, l.description));
-                            }
-                        });
-                        return of(..._obs);
-                    }
-                ),
-                mergeAll(),
-                catchError((e) => of({error: true, message: `Create laboratory: ${e}`}))
-            ),
-        BioWardrobeMySQL.getLaboratories()
-            .pipe(
-                switchMap( (ls) => {
-                    _.each(ls[0], (l) => {
+                switchMap( (ls) => of(...ls[0])),
+                switchMap( (l) => {
                         const user = Meteor.users.findOne(
                             { $and:[
                                     {'biowardrobe_import.laboratory_id': l.id},
                                     {'biowardrobe_import.laboratory_owner':1}
                                 ]
                             });
-                        if (!user) { return; }
+                        if (!user) { return of(null); }
 
-                        const lab: any = Labs.findOne({"owner._id": user._id});
+                        const lab = Labs.findOne({"owner._id": user._id});
                         if(!lab) {
-                            Log.Error('Must be in the list already', user);
+                            Log.debug('Add lab:', user, l.name);
+                            return DDPConnection.call('satellite/accounts/createLab', user._id, l.name, l.description);
                         }
-                        Labs.update({_id: lab._id}, {
-                            $set: {
-                                biowardrobe_import: {
-                                    laboratory_id: l.id
-                                }
-                            }})
-
-                    });
-                    return of([])
-                })
+                        return of(lab['_id'])
+                    },
+                    (biowardrobeRecord, labId, outerIndex, innerIndex) => ({labId, biowardrobeRecord})),
+                filter(_ => !!_.labId),
+                switchMap((val) => {
+                    Labs.update({_id: val.labId}, {
+                        $set: {
+                            biowardrobe_import: {
+                                laboratory_id: val.biowardrobeRecord.id
+                            }
+                        }}, {upsert: true});
+                    return of(val)
+                }),
+                takeLast(1),
+                catchError((e) => of({error: true, message: `Create laboratory: ${e}`}))
+            ),
+        BioWardrobeMySQL.getEgroups()
+            .pipe(
+                switchMap((es) => of(...es[0])),
+                switchMap( (p) => {
+                        const project = Projects.findOne({"biowardrobe_import.project_id": p.id});
+                        const lab = Labs.findOne({"biowardrobe_import.laboratory_id": p.laboratory_id});
+                        if (!project) {
+                            if(lab) {
+                                Log.error(`Add project: ${p.name} to the lab ${lab.name}`);
+                                return DDPConnection.call('satellite/accounts/createProject',
+                                    {_id: lab['_id'], name: lab['name'], main: true},
+                                    {name: p['name'], description: p['description']});
+                            } else {
+                                return of(null);
+                            }
+                        }
+                        return of(null)
+                    },
+                    (biowardrobeRecord, projectId, outerIndex, innerIndex) => ({projectId, biowardrobeRecord})),
+                filter(_ => !!_.projectId),
+                switchMap((val) => {
+                    Projects.update({_id: val.projectId}, {
+                        $set: {
+                            biowardrobe_import: {
+                                laboratory_id: val.biowardrobeRecord.laboratory_id
+                            }
+                        }}, {upsert: true});
+                    return of(val)
+                }),
+                // takeLast(1),
+                catchError((e) => of({error: true, message: `Create project: ${e}`}))
             )
-
     )
         .pipe(concatAll())
         .subscribe((c) => {
