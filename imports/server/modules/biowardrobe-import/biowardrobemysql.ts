@@ -50,6 +50,11 @@ const mysqlPool = createPool({
 
 export class BioWardrobeMySQL {
 
+    /**
+     *  Runs a MySQL query and return Observable
+     * @param {string} query
+     * @returns {Observable<any>}
+     */
     private static mysqlQuery (query: string): Observable<any> {
         return Observable.create((observer: Subscriber<Meteor.Error | any>) => {
             mysqlPool.getConnection(
@@ -87,6 +92,14 @@ export class BioWardrobeMySQL {
      */
     public static getLaboratories(): Observable<any> {
         return BioWardrobeMySQL.mysqlQuery('SELECT id, name, description from laboratory');
+    }
+
+    /**
+     * Gets egroups id, laboratory_id, name, description
+     * @returns {Observable<any>}
+     */
+    public static  getEgroups(): Observable<any>  {
+        return BioWardrobeMySQL.mysqlQuery('SELECT id,laboratory_id,name,description from egroup');
     }
 
     /**
