@@ -286,7 +286,8 @@ Meteor.startup( () => {
                         "conditions": e["conditions"],
                         "alias": e["name4browser"],
                         "notes": e["notes"]||"",
-                        "protocol": e["protocol"]||""
+                        "protocol": e["protocol"]||"",
+                        "grouping": e["groupping"]||""
                     };
 
                     if(e['etype'].includes('RNA')) {
@@ -305,23 +306,41 @@ Meteor.startup( () => {
                     e['cwl'] = CWLCollection.findOne(
                         {"description.url": "https://raw.githubusercontent.com/datirium/workflows/master/workflows/" + e["workflow"]});
 
+                    const user = Meteor.users.findOne({'emails.address': e['email'].toLowerCase()});
+
+                    if (user) {
+                        e['author']=`${user.profile.lastName}, ${user.profile.firstName}`;
+                        e['userId']=user._id;
+                    } else {
+                        e['author']=`${e['laboratory'].owner.lastName}, ${e['laboratory'].owner.firstName}`;
+                        e['userId']=e['laboratory'].owner._id;
+                    }
+                    // Log.debug(user, e['laboratory']);
                     return e;
                 }),
+                filter((exp)=>!!exp['cwl']._id && !!exp['project']._id),
                 reduce ((acc, exp) => {
                     let _sample = {
-                        userId: "",
+                        "userId": exp['userId'],
                         "author": exp['author'],
                         "cwlId": exp['cwl']._id,
                         "metadata": exp['metadata'],
                         "projectId": exp['project']._id,
                         "inputs": exp['input'],
-                        "upstream": exp['upstream']
+                        "upstream": exp['upstream'],
+                        "date": {
+                            "created": new Date(exp['dateadd']),
+                            "analyzed": new Date(exp['dateanalyzed']),
+                            "analyse_start": new Date(exp['dateanalyzes']),
+                            "analyse_end": new Date(exp['dateanalyzee']),
+                        }
                     };
                     Log.debug(_sample);
 
                     return {count: acc['count']+1, message: 'Samples finished'} as any;
-                },{count: 0, message: 'Samples finished'} as any)
-            )
+                },{count: 0, message: 'Samples finished'} as any),
+                catchError((e) => of({error: true, message: `Samples import: ${e}`}))
+            ),
         )
             .pipe(concatAll())
             .subscribe((c) => {
