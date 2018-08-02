@@ -6,7 +6,8 @@ import {
     take,
     catchError,
     concatAll,
-    takeLast
+    takeLast,
+    mergeMap, reduce, map
 } from 'rxjs/operators';
 import { of } from 'rxjs/observable/of';
 
@@ -17,7 +18,10 @@ import {
 } from './biowardrobemysql';
 
 import { Log } from '../logger';
-import {Labs, Projects} from '../../../collections/shared';
+import { CWLCollection, Labs, Projects } from '../../../collections/shared';
+import { bowtie_idx } from './upstreams';
+
+const Mustache =  require('mustache');
 
 
 // delete Package.webapp.main;
@@ -25,14 +29,14 @@ import {Labs, Projects} from '../../../collections/shared';
 // let labs = new Mongo.Collection('biowardrobe_import_labs');
 // let billingc = new Mongo.Collection('biowardrobe_import_billing');
 // let pricingc = new Mongo.Collection('biowardrobe_import_pricing');
-let projects = new Mongo.Collection('biowardrobe_import_projects');
+// let projects = new Mongo.Collection('biowardrobe_import_projects');
 let experiments = new Mongo.Collection('biowardrobe_import_experiments');
 // let invoices = new Mongo.Collection('biowardrobe_import_invoices');
 let genome = new Mongo.Collection('biowardrobe_import_genome');
 let antibodies = new Mongo.Collection('biowardrobe_import_antibodies');
 let companyc = new Mongo.Collection('companies');
 
-let statsc = new Mongo.Collection('stats');
+// let statsc = new Mongo.Collection('stats');
 
 // import { map } from 'rxjs/operator/map';
 // import { forkJoin } from 'rxjs/observable/forkJoin';
@@ -68,124 +72,266 @@ const stats = {
 
 Meteor.startup( () => {
 
-    // Labs._dropIndex({ "owner._id": 1} );
-    // Labs._dropIndex({ "biowardrobe_import.laboratory_id": 1} );
-    // Meteor.users._dropIndex({ "biowardrobe_import.laboratory_id": 1});
+    if(Meteor.settings['biowardrobe'] && Meteor.settings['biowardrobe']['db']) {
+        Labs._ensureIndex({ "owner._id": 1}, { unique: true } );
+        Labs._ensureIndex({ "biowardrobe_import.laboratory_id": 1} );
+        Meteor.users._ensureIndex({ "biowardrobe_import.laboratory_id": 1} );
 
-    Labs._ensureIndex({ "owner._id": 1}, { unique: true } );
-    Labs._ensureIndex({ "biowardrobe_import.laboratory_id": 1} );
-    Meteor.users._ensureIndex({ "biowardrobe_import.laboratory_id": 1} );
-
-    of(
-        DDPConnection.sync$
-            .pipe(
-                filter(_ => !!_),
-                take(1),
-            ),
-        BioWardrobeMySQL.getWorkers(Meteor.settings["oauth2server"]["domain"])
-            .pipe(
-                switchMap( (ws) => of(...ws[0])),
-                filter((w) => {
-                    const email = w['email'].toLowerCase();
-                    return (email && email.length !== 0 && email.endsWith('@' + Meteor.settings["oauth2server"]["domain"]));
-                }),
-                switchMap((w) => {
-                    const email = w['email'].toLowerCase();
-                    const user = Meteor.users.findOne({'emails.address': email});
-                    if (!user) {
-                        Log.debug('Call createUser', w['fname'], w['lname'], email);
-                        return DDPConnection.call('satellite/accounts/createUser', w['fname'], w['lname'], email);
-                    }
-                    return of(user['_id']);
-                }, (biowardrobeRecord, userId, outerIndex, innerIndex) => ({userId, biowardrobeRecord})),
-                switchMap((val) => {
-                    const w = val.biowardrobeRecord;
-                    Meteor.users.update({_id: val.userId}, {
-                        $set: {
-                            biowardrobe_import: {
-                                laboratory_id: w['laboratory_id'],
-                                admin: w['admin'],
-                                laboratory_owner: w['changepass']
-                            }
-                        }}, {upsert: true});
-                    return of(val);
-                }),
-                takeLast(1),
-                catchError((e) => of({error: true, message: `Create user: ${e}`}))
-            ),
-        BioWardrobeMySQL.getLaboratories()
-            .pipe(
-                switchMap( (ls) => of(...ls[0])),
-                switchMap( (l) => {
-                        const user = Meteor.users.findOne(
-                            { $and:[
-                                    {'biowardrobe_import.laboratory_id': l.id},
-                                    {'biowardrobe_import.laboratory_owner':1}
-                                ]
-                            });
-                        if (!user) { return of(null); }
-
-                        const lab = Labs.findOne({"owner._id": user._id});
-                        if(!lab) {
-                            Log.debug('Add lab:', user, l.name);
-                            return DDPConnection.call('satellite/accounts/createLab', user._id, l.name, l.description);
+        of(
+            DDPConnection.sync$
+                .pipe(
+                    filter(_ => !!_),
+                    take(1),
+                ),
+            BioWardrobeMySQL.getWorkers(Meteor.settings["oauth2server"]["domain"])
+                .pipe(
+                    switchMap( (ws) => of(...ws[0])),
+                    filter((w) => {
+                        const email = w['email'].toLowerCase();
+                        return (email && email.length !== 0 && email.endsWith('@' + Meteor.settings["oauth2server"]["domain"]).toLowerCase());
+                    }),
+                    mergeMap((w) => {
+                        const email = w['email'].toLowerCase();
+                        const user = Meteor.users.findOne({'emails.address': email});
+                        if (!user) {
+                            Log.debug('Call createUser', w['fname'], w['lname'], email);
+                            return DDPConnection.call('satellite/accounts/createUser', w['fname'], w['lname'], email);
                         }
-                        return of(lab['_id'])
-                    },
-                    (biowardrobeRecord, labId, outerIndex, innerIndex) => ({labId, biowardrobeRecord})),
-                filter(_ => !!_.labId),
-                switchMap((val) => {
-                    Labs.update({_id: val.labId}, {
-                        $set: {
-                            biowardrobe_import: {
-                                laboratory_id: val.biowardrobeRecord.id
+                        return of(user['_id']);
+                    }, (biowardrobeRecord, userId, outerIndex, innerIndex) => ({userId, biowardrobeRecord})),
+                    mergeMap((val) => {
+                        const w = val.biowardrobeRecord;
+                        Meteor.users.update({_id: val.userId}, {
+                            $set: {
+                                biowardrobe_import: {
+                                    laboratory_id: w['laboratory_id'],
+                                    admin: w['admin'],
+                                    laboratory_owner: w['changepass']
+                                }
+                            }}, {upsert: true});
+                        return of(val);
+                    }),
+                    takeLast(1),
+                    catchError((e) => of({error: true, message: `Create user: ${e}`}))
+                ),
+            BioWardrobeMySQL.getLaboratories()
+                .pipe(
+                    switchMap( (ls) => of(...ls[0])),
+                    mergeMap( (l) => {
+                            const user = Meteor.users.findOne(
+                                { $and:[
+                                        {'biowardrobe_import.laboratory_id': l.id},
+                                        {'biowardrobe_import.laboratory_owner':1}
+                                    ]
+                                });
+                            if (!user) {
+                                Log.error('No owner for lab:', l.id );
+                                return of(null);
                             }
-                        }}, {upsert: true});
-                    return of(val)
-                }),
-                takeLast(1),
-                catchError((e) => of({error: true, message: `Create laboratory: ${e}`}))
-            ),
-        BioWardrobeMySQL.getEgroups()
-            .pipe(
-                switchMap((es) => of(...es[0])),
-                switchMap( (p) => {
-                        const project = Projects.findOne({"biowardrobe_import.project_id": p.id});
-                        const lab = Labs.findOne({"biowardrobe_import.laboratory_id": p.laboratory_id});
-                        if (!project) {
-                            if(lab) {
+
+                            const lab = Labs.findOne({"owner._id": user._id});
+                            if(!lab) {
+                                Log.debug('Add lab:', user, l.name);
+                                return DDPConnection.call('satellite/accounts/createLab', user._id, l.name, l.description);
+                            }
+                            return of(null)
+                        },
+                        (biowardrobeRecord, labId, outerIndex, innerIndex) => ({labId, biowardrobeRecord})),
+                    filter(_ => !!_.labId),
+                    reduce((acc, val) => {
+                        Labs.update({_id: val.labId}, {
+                            $set: {
+                                biowardrobe_import: {
+                                    laboratory_id: val.biowardrobeRecord.id
+                                }
+                            }}, {upsert: true});
+                        return {count: acc['count'] + 1, message: 'Laboratories import complete'} as any;
+                    }, {count: 0, message: 'Laboratories import complete'} as any),
+                    catchError((e) => of({error: true, message: `Create laboratory: ${e}`}))
+                ),
+            BioWardrobeMySQL.getEgroups() // Projects now
+                .pipe(
+                    switchMap((es) => of(...es[0])),
+                    mergeMap( (p) => {
+                            const project = Projects.findOne({"biowardrobe_import.project_id": p.id});
+                            const lab: any = Labs.findOne({"biowardrobe_import.laboratory_id": p.laboratory_id});
+                            if (!project && lab) {
                                 Log.error(`Add project: ${p.name} to the lab ${lab.name}`);
                                 return DDPConnection.call('satellite/accounts/createProject',
                                     {_id: lab['_id'], name: lab['name'], main: true},
                                     {name: p['name'], description: p['description']});
-                            } else {
-                                return of(null);
                             }
+                            return of(null);
+                        },
+                        (biowardrobeRecord, projectId, outerIndex, innerIndex) => ({projectId: projectId, biowardrobeRecord})),
+                    filter(_ => !!_.projectId),
+                    reduce((acc, val) => {
+                        Log.info(`Update project: ${val.projectId} `);
+
+                        Projects.update({_id: val.projectId}, {
+                            $set: {
+                                biowardrobe_import: {
+                                    project_id: val.biowardrobeRecord.id
+                                }
+                            }}, {upsert: true});
+                        return {count: acc['count'] + 1, message: 'Projects import complete'} as any;
+                    }, {count: 0, message: 'Projects import complete'} as any),
+                    catchError((e) => of({error: true, message: `Create project: ${e}`}))
+                ),
+            BioWardrobeMySQL.getEgroupRights().pipe(
+                switchMap((es) => of(...es[0])),
+                reduce( (acc, p) => {
+                    const project: any = Projects.findOne({"biowardrobe_import.project_id": p.egroup_id}); // Projects now!
+                    const lab: any = Labs.findOne({"biowardrobe_import.laboratory_id": p.laboratory_id});
+                    if(project && lab) {
+                        if(!project.labs.find((l) => l._id === lab._id)) {
+                            const l_obj = {
+                                _id: lab._id,
+                                name: lab.name,
+                                main: false
+                            };
+
+                            // Log.debug('Giving access to a project for a lab :', project._id, l_obj);
+                            return {count: acc['count']+1, message: 'Access to projects for labs complete'} as any;
                         }
-                        return of(null)
-                    },
-                    (biowardrobeRecord, projectId, outerIndex, innerIndex) => ({projectId, biowardrobeRecord})),
-                filter(_ => !!_.projectId),
-                switchMap((val) => {
-                    Projects.update({_id: val.projectId}, {
-                        $set: {
-                            biowardrobe_import: {
-                                laboratory_id: val.biowardrobeRecord.laboratory_id
+                    } else {
+                        // Log.error('Lab or project does not exist!', p, {project: !!project, lab: !!lab});
+                    }
+                    return {count: acc['count'], message: 'Access to projects for labs complete'} as any;
+                }, {count: 0, message: 'Access to projects for labs complete'} as any),
+                catchError((e) => of({error: true, message: `Access to a project for a lab: ${e}`}))
+            ),
+            BioWardrobeMySQL.getExperiments().pipe(
+                switchMap((es) => of(...es[0])),
+                filter( _ => _.deleted === 0),
+                take(2),
+                map((e) => {
+                    let _settings = {
+                        'advanced':'/ANL-DATA',
+                        'airflowdb':'airflow',
+                        'bin':'/bin',
+                        'experimentsdb':'experiments',
+                        'genomebrowserroot':'',
+                        'indices':'/indices',
+                        'maxthreads':'6',
+                        'preliminary':'/RAW-DATA',
+                        'temp':'/tmp',
+                        'upload':'/upload',
+                        'wardrobe':'/wardrobe',
+                        'wardroberoot':'/ems'
+                    };
+                    const biowardrobe_connection_id = "biowardrobe";
+                    const BOWTIE_INDICES = "bowtie";
+                    const STAR_INDICES = "STAR";
+                    const ANNOTATIONS = "annotations";
+                    const CHR_LENGTH_GENERIC_TSV = "chrNameLength.txt";
+                    const ANNOTATION_GENERIC_TSV = "refgene.tsv";
+
+                    let extra: any = {
+                        "pair": e['etype'].includes('pair'),
+                        "dUTP": e['etype'].includes('dUTP'),
+                        "forcerun": e['forcerun'] === 1,
+                        "spike": e['genome'].includes('spike'),
+                        "force_fragment_size": e['force_fragment_size'] === 1,
+                        "broad_peak": e['broad_peak'] === 2,
+                        "remove_duplicates": e['remove_duplicates'] === 1,
+                        "params": e['params'] || '{}',
+                        "raw_data": [_settings['wardrobe'], _settings['preliminary']].join('/').replace(/\/\//g,'/'),
+                        "upload": [_settings['wardrobe'], _settings['upload']].join('/').replace(/\/\//g,'/'),
+                        "indices": [_settings['wardrobe'], _settings['indices']].join('/').replace(/\/\//g,'/'),
+                        "threads": _settings['maxthreads'],
+                        "experimentsdb": _settings['experimentsdb'],
+                    };
+                    Object.assign(e, extra);
+
+                    extra = {
+                        "fastq_file_upstream": ['file://', e["raw_data"], e["uid"], e["uid"] + '.fastq.bz2'].join('/'),
+                        "fastq_file_downstream": ['file://', e["raw_data"], e["uid"], e["uid"] + '_2.fastq.bz2'].join('/'),
+                        "star_indices_folder": ['file://', e["indices"], STAR_INDICES, e["findex"]].join('/'),
+                        "bowtie_indices_folder": ['file://', e["indices"], BOWTIE_INDICES, e["findex"]].join('/'),
+                        "bowtie_indices_folder_ribo": ['file://', e["indices"], BOWTIE_INDICES, e["findex"] + "_ribo"].join('/'),
+                        "chrom_length": [e["indices"], BOWTIE_INDICES, e["findex"], CHR_LENGTH_GENERIC_TSV].join('/'),
+                        "annotation_input_file": ['file://', e["indices"], ANNOTATIONS, e["findex"], ANNOTATION_GENERIC_TSV].join('/'),
+                        "exclude_chr": e['spike']?"control": "",
+                        "output_folder": [e["raw_data"], e["uid"]].join('/'),
+                        "control_file": e['control_id']?[e["raw_data"], e["control_id"], e["control_id"] + '.bam'].join('/'):""
+                    };
+                    Object.assign(e, extra);
+
+                    let input = JSON.parse(
+                        Mustache.render(
+                            e['template'].replace(/{{/g,'<<').replace(/}}/g,'>>').replace(/{/g,'{{{').replace(/}/g,'}}}'),
+                            e).replace(/<</g,'{').replace(/>>/g,'}'),
+                        (key, value) => {
+
+                            if (value === "false") {
+                                return false;
                             }
-                        }}, {upsert: true});
-                    return of(val)
+                            if (value === "true") {
+                                return true;
+                            }
+                            return value;
+                        });
+
+                    if(!e['control_file']) {
+                        delete(input['control_file']);
+                    }
+
+                    e['project'] = Projects.findOne({"biowardrobe_import.project_id": e.egroup_id}); // Projects now!
+                    e['laboratory'] = Labs.findOne({"biowardrobe_import.laboratory_id": e.laboratory_id});
+                    e['input'] = input;
+
+                    e["metadata"] = {
+                        "cells": e["cells"],
+                        "conditions": e["conditions"],
+                        "alias": e["name4browser"],
+                        "notes": e["notes"]||"",
+                        "protocol": e["protocol"]||""
+                    };
+
+                    if(e['etype'].includes('RNA')) {
+                        // Object.assign(e["metadata"])
+                    } else {
+                        Object.assign(e["metadata"],{
+                            "antibody": e["antibody"].trim(),
+                            "catalog": e["antibodycode"].trim()
+                        });
+
+                        let up = bowtie_idx.find( (idx) => idx.cwl.input.genome.includes(e['db']));
+
+                        e['upstream'] = { 'bowtie_index': up};
+                    }
+
+                    e['cwl'] = CWLCollection.findOne(
+                        {"description.url": "https://raw.githubusercontent.com/datirium/workflows/master/workflows/" + e["workflow"]});
+
+                    return e;
                 }),
-                // takeLast(1),
-                catchError((e) => of({error: true, message: `Create project: ${e}`}))
+                reduce ((acc, exp) => {
+                    let _sample = {
+                        userId: "",
+                        "author": exp['author'],
+                        "cwlId": exp['cwl']._id,
+                        "metadata": exp['metadata'],
+                        "projectId": exp['project']._id,
+                        "inputs": exp['input'],
+                        "upstream": exp['upstream']
+                    };
+                    Log.debug(_sample);
+
+                    return {count: acc['count']+1, message: 'Samples finished'} as any;
+                },{count: 0, message: 'Samples finished'} as any)
             )
-    )
-        .pipe(concatAll())
-        .subscribe((c) => {
-            if (c) {
-                Log.debug("Sync stream, subscribed!", c);
-            }
-        });
+        )
+            .pipe(concatAll())
+            .subscribe((c) => {
+                if (c) {
+                    Log.debug("Sync stream, subscribed!", c);
+                }
+            });
+    }
 });
+
 
 // function biowardrobe_import() {
 //
@@ -300,7 +446,7 @@ Meteor.startup( () => {
 //                     }
 //                     // else {
 //                     //
-//                     //         //TODO: NB addToSet will or will not check by ID or by the whole structure, I can garantee uniqness of _ID only;
+//                     //         //TODO: NB addToSet will or will not check by ID or by the whole structure, I can guarantee uniqueness of _ID only;
 //                     //         labs.update({id: w['laboratory_id']}, {
 //                     //             $addToSet: {
 //                     //                 "members": {

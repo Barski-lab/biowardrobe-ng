@@ -107,13 +107,13 @@ export class DDPConnection {
             added(id, fields) {
                 Log.debug(`${_remote_collection_name}/added:`, id, _.keys(fields));
                 if(_collection) {
-                    _collection.update({_id: id}, fields, {upsert: true});
+                    _collection.update({_id: id}, {$set: fields}, {upsert: true});
                 }
             },
             changed(id, fields) {
                 Log.debug(`${_remote_collection_name}/changed:`, id, _.keys(fields));
                 if(_collection) {
-                    _collection.update({_id: id}, fields, {upsert: true});
+                    _collection.update({_id: id}, {$set: fields}, {upsert: true});
                 }
             },
             removed(id) {

@@ -59,6 +59,11 @@ export class BioWardrobeMySQL {
         return Observable.create((observer: Subscriber<Meteor.Error | any>) => {
             mysqlPool.getConnection(
                 Meteor.bindEnvironment((err, connection) => {
+                        if (err) {
+                            Log.error('biowardrobemysql.ts: mysqlQuery:', err.message);
+                            observer.error(err);
+                            return;
+                        }
                         connection.query(query, [],
                             Meteor.bindEnvironment(
                                 function (error, rows, fields) {
@@ -96,10 +101,61 @@ export class BioWardrobeMySQL {
 
     /**
      * Gets egroups id, laboratory_id, name, description
+     * Now egroups are projects
      * @returns {Observable<any>}
      */
     public static  getEgroups(): Observable<any>  {
         return BioWardrobeMySQL.mysqlQuery('SELECT id,laboratory_id,name,description from egroup');
+    }
+
+    /**
+     *
+     * @returns {Observable<any>}
+     */
+    public static  getEgroupRights(): Observable<any>  {
+        return BioWardrobeMySQL.mysqlQuery('SELECT egroup_id, laboratory_id from egrouprights');
+    }
+
+    /**
+     *
+     */
+    public static getExperiments(): Observable<any> {
+        return BioWardrobeMySQL.mysqlQuery(
+            `
+            SELECT l.id, uid, name4browser,  egroup_id, deleted, groupping, cells, conditions, size,
+            dateadd, datedel, dateanalyzed, dateanalyzes, dateanalyzee, libstatus, libstatustxt, url,filename, filenameold,
+            tagstotal, tagsmapped, tagssuppressed, tagsused, tagsribo, params,
+            fragmentsize, fragmentsizeest, fragmentsizeexp, fragmentsizeforceuse, notes, protocol, islandcount,
+            experimenttype_id, browsergrp, browsershare, forcerun, rmdup, antibodycode, trim3, trim5, control,
+            control_id, genome_id, download_id, l.laboratory_id, antibody_id, 
+            
+        e.etype, e.workflow, e.template, e.upload_rules, 
+
+        g.db, g.findex, g.annotation, g.annottable, g.genome, g.gsize as genome_size, 
+
+        COALESCE(l.trim5,0) as clip_5p_end, COALESCE(l.trim3,0) as clip_3p_end,
+        COALESCE(fragmentsizeexp,0) as exp_fragment_size, COALESCE(fragmentsizeforceuse,0) as force_fragment_size,
+        COALESCE(l.rmdup,0) as remove_duplicates,
+        COALESCE(control,0) as control, COALESCE(control_id,'') as control_id,
+
+        COALESCE(a.properties,0) as broad_peak, author, a.antibody,
+
+        COALESCE(w.email,'') as email
+        
+        from labdata l
+        inner join (experimenttype e,genome g ) ON (e.id=experimenttype_id and g.id=genome_id)
+        LEFT JOIN (antibody a) ON (l.antibody_id=a.id)
+        LEFT JOIN (worker w) ON (l.worker_id=w.id)
+             
+             where egroup_id is not null and libstatus > 2 and libstatus < 100
+            `
+        );
+    }
+
+    public static getExperimentTypes(): Observable<any> {
+        return BioWardrobeMySQL.mysqlQuery(
+            `SELECT id, etype, workflow from experimenttype`
+        );
     }
 
     /**
@@ -120,57 +176,6 @@ export class BioWardrobeMySQL {
 
 }
 
-
-export function get_workers(){
-    return new Promise((resolve, reject) => {
-        mysqlPool.getConnection(function (err, connection) {
-            connection.query(
-                'SELECT * from worker where email is not null', [],
-                function (err, rows, fields) {
-                    connection.release();
-                    if (err == null && rows.length > 0) {
-                        resolve(rows);
-                    } else {
-                        reject('nothing');
-                    }
-                });
-        });
-    });
-}
-
-export function get_antibodies(){
-    return new Promise((resolve, reject) => {
-        mysqlPool.getConnection(function (err, connection) {
-            connection.query(
-                'SELECT * from antibody', [],
-                function (err, rows, fields) {
-                    connection.release();
-                    if (err == null && rows.length > 0) {
-                        resolve(rows);
-                    } else {
-                        reject('nothing');
-                    }
-                });
-        });
-    });
-}
-
-export function get_genome(){
-    return new Promise((resolve, reject) => {
-        mysqlPool.getConnection(function (err, connection) {
-            connection.query(
-                'SELECT * from genome', [],
-                function (err, rows, fields) {
-                    connection.release();
-                    if (err == null && rows.length > 0) {
-                        resolve(rows);
-                    } else {
-                        reject('nothing');
-                    }
-                });
-        });
-    });
-}
 
 export function get_experiments(){
     return new Promise((resolve, reject) => {
@@ -194,58 +199,5 @@ export function get_experiments(){
                 });
         });
     });
-}
-
-export function get_laboratories() {
-    return new Promise((resolve, reject) => {
-        mysqlPool.getConnection((err, connection) => {
-            connection.query(
-                'SELECT id, name, description from laboratory ', [],
-                (err, rows, fields) => {
-                    connection.release();
-                    if (err == null && rows.length > 0) {
-                        resolve(rows);
-                    } else {
-                        reject('nothing');
-                    }
-
-                });
-        });
-    })
-}
-
-export function get_egroups() {
-    return new Promise((resolve, reject) => {
-        mysqlPool.getConnection((err, connection) => {
-            connection.query(
-                'SELECT id,laboratory_id,name,description from egroup ', [],
-                (err, rows, fields) => {
-                    connection.release();
-                    if (err == null && rows.length > 0) {
-                        resolve(rows);
-                    } else {
-                        reject('nothing');
-                    }
-                });
-        });
-    })
-}
-
-export function get_egroupr() {
-    return new Promise((resolve, reject) => {
-        mysqlPool.getConnection((err, connection) => {
-            connection.query(
-                'SELECT egroup_id, laboratory_id' +
-                ' from egrouprights', [],
-                (err, rows, fields) => {
-                    connection.release();
-                    if (err == null && rows.length > 0) {
-                        resolve(rows);
-                    } else {
-                        reject('nothing');
-                    }
-                });
-        });
-    })
 }
 
