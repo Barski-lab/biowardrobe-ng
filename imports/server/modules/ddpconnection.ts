@@ -7,12 +7,13 @@ import { bindCallback } from 'rxjs/observable/bindCallback';
 import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
 import { fromEvent } from 'rxjs/observable/fromEvent';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
-import { switchMap, combineAll } from 'rxjs/operators';
+import { switchMap, combineAll, catchError } from 'rxjs/operators';
 import { Subject } from 'rxjs/Subject';
 import { merge } from 'rxjs/observable/merge';
 import { combineLatest } from 'rxjs/observable/combineLatest';
+import { of } from 'rxjs/observable/of';
 
-import { CWLCollection, Drafts, Labs, Projects } from '../../collections/shared'
+import { CWLCollection, Drafts, Labs, Projects, Samples } from '../../collections/shared'
 
 import { Log } from './logger';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
@@ -20,7 +21,7 @@ import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 export class DDPConnection {
     private static DDPConnection: DDP.DDPStatic = null;
     private static _hooks = {};
-    private static _messages = {active: [], backup : []};
+    private static _messages = { active: [], backup: [] };
 
     public static sync$ = new BehaviorSubject(null);
 
@@ -31,15 +32,31 @@ export class DDPConnection {
     private static chan_id;
 
     constructor() {
-        if(Meteor.settings['rc_server']) {
+        if (Meteor.settings['rc_server']) {
             this._do_connect();
         }
     }
 
     private _do_connect() {
-        if(!DDPConnection.DDPConnection) {
+        if (!DDPConnection.DDPConnection) {
             DDPConnection.DDPConnection = DDP.connect(Meteor.settings.rc_server);
-            Log.debug ("Setting DDP connection to", Meteor.settings.rc_server);
+            Log.debug("Setting DDP connection to", Meteor.settings.rc_server);
+            Meteor['connection'] = DDPConnection.DDPConnection;
+
+            // Proxy the public methods of Meteor.connection so they can
+            // be called directly on Meteor.
+            [
+                'subscribe',
+                'methods',
+                'call',
+                'apply',
+                'status',
+                'reconnect',
+                'disconnect'
+            ].forEach(name => {
+                Meteor[name] = Meteor['connection'][name].bind(Meteor['connection']);
+            });
+
         }
 
         let x = this.onReconnect()
@@ -52,8 +69,9 @@ export class DDPConnection {
                     return combineLatest(this._usersSubs(), this._cwlSubs())
                 }),
                 switchMap((v) => {
-                    return combineLatest(this._labsSubs(), this._projectsSubs())
-                })
+                    return combineLatest(this._labsSubs(), this._projectsSubs(),this._samplesSubs())
+                }),
+                catchError((e) => of({ error: true, message: `Reconnect error: ${e}` }))
             )
             .subscribe(DDPConnection.sync$);
     }
@@ -70,22 +88,22 @@ export class DDPConnection {
                 const _email = fields.emails[0].address.toLowerCase();
                 const _user = Meteor.users.findOne({ "emails.address": new RegExp(`${_email}`, 'i') });
 
-                if(! _user) {
+                if (!_user) {
                     Log.debug(`satellite/users/added:`, id, fields);
                     fields["_id"] = id;
                     Meteor.users.insert(fields);
                 } else
-                if(_user && _user._id != id ) {
-                    Log.info('Replace old user:', id, _user._id);
-                    _user['old_id'] = _user['old_id'] || [];
-                    _user['old_id'].push(_user._id);
-                    _user['_id'] = id;
-                    _user['roles'] = fields['roles'];
-                    _user['profile'] = fields['profile'];
-                    _user['emails'] = fields['emails'];
-                    Meteor.users.insert(_user);
-                    Meteor.users.remove({_id: _user._id});
-                }
+                    if (_user && _user._id != id) {
+                        Log.info('Replace old user:', id, _user._id);
+                        _user['old_id'] = _user['old_id'] || [];
+                        _user['old_id'].push(_user._id);
+                        _user['_id'] = id;
+                        _user['roles'] = fields['roles'];
+                        _user['profile'] = fields['profile'];
+                        _user['emails'] = fields['emails'];
+                        Meteor.users.insert(_user);
+                        Meteor.users.remove({ _id: _user._id });
+                    }
             }
         });
     }
@@ -102,25 +120,29 @@ export class DDPConnection {
         return this._observeChanges('satellite/projects', 'projects', Projects);
     }
 
+    private _samplesSubs(): any {
+        return this._observeChanges('satellite/samples', 'samples', Samples);
+    }
+
     private _observeChanges(_subscription, _remote_collection_name, _collection?, _callbacks?) {
         _callbacks = _callbacks || {
             added(id, fields) {
                 Log.debug(`${_remote_collection_name}/added:`, id, _.keys(fields));
-                if(_collection) {
-                    _collection.update({_id: id}, {$set: fields}, {upsert: true});
+                if (_collection) {
+                    _collection.update({ _id: id }, { $set: fields }, { upsert: true });
                 }
             },
             changed(id, fields) {
                 Log.debug(`${_remote_collection_name}/changed:`, id, _.keys(fields));
-                if(_collection) {
-                    _collection.update({_id: id}, {$set: fields}, {upsert: true});
+                if (_collection) {
+                    _collection.update({ _id: id }, { $set: fields }, { upsert: true });
                 }
             },
             removed(id) {
                 Log.debug(`${_remote_collection_name}/removed:`, id);
             }
         };
-        return DDPConnection.subscribeAutorun(_subscription,() => {
+        return DDPConnection.subscribeAutorun(_subscription, () => {
             let _c_coll = new Mongo.Collection(_remote_collection_name, rc_connection);
             return _c_coll.find().observeChanges(_callbacks);
         });
@@ -150,8 +172,8 @@ export class DDPConnection {
     }
 
     public static apply<T>(name: string, args: EJSONable[], options?: {
-        wait ?: boolean;
-        onResultReceived ?: Function;
+        wait?: boolean;
+        onResultReceived?: Function;
     }): Observable<T> {
 
         return Observable.create((observer: Subscriber<Meteor.Error | T>) => {
@@ -200,7 +222,7 @@ export class DDPConnection {
         });
     }
 
-    public static addMessage (newMsg){
+    public static addMessage(newMsg) {
         Log.debug('addMessage', newMsg);
         // DDPConnection._messages.active.push (newMsg);
         // DDPConnection._messages.backup.push (newMsg);
@@ -316,9 +338,9 @@ export class DDPConnection {
     // }
     //
     //
-    public static registerHook(n,h){
-        if(!DDPConnection._hooks[n])
-            DDPConnection._hooks[n]=[];
+    public static registerHook(n, h) {
+        if (!DDPConnection._hooks[n])
+            DDPConnection._hooks[n] = [];
 
         // if(typeof h === "function") // Should allow Objects too, because of file
         {
@@ -327,13 +349,13 @@ export class DDPConnection {
         }
     }
 
-    public static get connection(){
+    public static get connection() {
         return DDPConnection.DDPConnection;
     }
 }
 
 export const connection = new DDPConnection();
-export const rc_connection: any = {connection: DDPConnection.connection,  _suppressSameNameError: true };
+export const rc_connection: any = { connection: DDPConnection.connection, _suppressSameNameError: true };
 
 ////// HELPER FUNCTIONS
 export interface CallbacksObject {
