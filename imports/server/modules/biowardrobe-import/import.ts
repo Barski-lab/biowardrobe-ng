@@ -73,7 +73,7 @@ const stats = {
 
 /**
  * BioWardrobe class wraps BioWardrobeMySQL calls (access to biowardrobe mysql database tables)
- * to sync with local mongodb and remote instance of biowardrobe-ng
+ * to sync differences with local mongodb and remote instance of biowardrobe-ng
  */
 class BioWardrobe {
 
@@ -349,6 +349,15 @@ class BioWardrobe {
                 if (e['etype'].includes('RNA')) {
 
                     e['upstreams'] = { 'star_index': _upstream_data("KcfBXjQtF6vNzXosK") }; // STAR
+                    e['pie'] = {
+                        colors: ['#b3de69', '#99c0db', '#fb8072', '#fdc381'],
+                        data: [
+                            ['Transcriptome', e['tagsused']],
+                            ['Multi-mapped', e['tagssuppressed']],
+                            ['Unmapped', e['tagstotal'] - e['tagsmapped'] - e['tagssuppressed']],
+                            ['Outside annotation', e['tagsmapped'] - e['tagsused']]
+                        ]
+                    };
                 } else {
 
                     Object.assign(e["metadata"], {
@@ -357,6 +366,15 @@ class BioWardrobe {
                     });
 
                     e['upstreams'] = { 'bowtie_index': _upstream_data("3PfggtmrE3FBdrPcy") }; // bowtie
+                    e['pie'] = {
+                        colors: ['#b3de69', '#99c0db', '#fb8072', '#fdc381'],
+                        data: [
+                            ['Mapped', e['tagsused']],
+                            ['Multi-mapped', e['tagssuppressed']],
+                            ['Unmapped', e['tagstotal'] - e['tagsmapped'] - e['tagssuppressed']],
+                            ['Duplicates', e['tagsmapped'] - e['tagsused']]
+                        ]
+                    };
                 }
 
                 const user = Meteor.users.findOne({ 'emails.address': e['email'].toLowerCase() });
@@ -399,7 +417,10 @@ class BioWardrobe {
                     "preview": {
                         "position1": exp['metadata']['cells'],
                         "position2": exp['metadata']['alias'],
-                        "position3": exp['metadata']['conditions']
+                        "position3": exp['metadata']['conditions'],
+                        "visualPlugins": [
+                            { "pie": exp['pie'] }
+                        ]
                     },
                     "outputs": exp['params']
                 };
