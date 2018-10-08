@@ -25,42 +25,21 @@ import { Observable } from 'rxjs';
 
 const Mustache = require('mustache');
 
-
 // delete Package.webapp.main;
 
-// let labs = new Mongo.Collection('biowardrobe_import_labs');
-// let billingc = new Mongo.Collection('biowardrobe_import_billing');
-// let pricingc = new Mongo.Collection('biowardrobe_import_pricing');
-// let projects = new Mongo.Collection('biowardrobe_import_projects');
-// let experiments = new Mongo.Collection('biowardrobe_import_experiments');
-// let invoices = new Mongo.Collection('biowardrobe_import_invoices');
-// let genome = new Mongo.Collection('biowardrobe_import_genome');
-// let antibodies = new Mongo.Collection('biowardrobe_import_antibodies');
-// let companyc = new Mongo.Collection('companies');
-
-// let statsc = new Mongo.Collection('stats');
-
-// import { map } from 'rxjs/operator/map';
-// import { forkJoin } from 'rxjs/observable/forkJoin';
-// import { zip } from 'rxjs/observable/zip';
-// import { concat } from 'rxjs/observable/concat';
-// import { mergeMap } from 'rxjs/operator/mergeMap';
-
-
 let _laboratories = {};
-let genomes = {};
-let antibody = {};
-let company;
+// let genomes = {};
+// let antibody = {};
+// let company;
 
-function lab_basic(id, prim = false) {
-    let l = _laboratories[id];
-    return {
-        _id: l._id,
-        name: l.name,
-        main: prim
-    };
-}
-
+// function lab_basic(id, prim = false) {
+//     let l = _laboratories[id];
+//     return {
+//         _id: l._id,
+//         name: l.name,
+//         main: prim
+//     };
+// }
 
 const stats = {
     storage: 0,
@@ -97,9 +76,14 @@ class BioWardrobe {
                         Log.debug('Call createUser', w['fname'], w['lname'], email);
                         return DDPConnection.call('satellite/accounts/createUser', w['fname'], w['lname'], email);
                     }
-                    return of(user['_id']);
+                    if(!user["biowardrobe_import"]) {
+                        return of(user['_id']);
+                    } else {
+                        return of(null);
+                    }
                 }, (biowardrobeRecord, userId, outerIndex, innerIndex) => ({ userId, biowardrobeRecord })),
-                mergeMap((val) => {
+                filter(_ => _.userId),
+                reduce((acc, val) => {
                     const w = val.biowardrobeRecord;
                     // TODO: check users email, if not exist add
                     Meteor.users.update({ _id: val.userId }, {
@@ -111,9 +95,8 @@ class BioWardrobe {
                             }
                         }
                     }, { upsert: true });
-                    return of(val);
-                }),
-                takeLast(1),
+                    return { count: acc['count'] + 1, message: 'Users import complete' } as any;
+                }, { count: 0, message: 'Users import complete' } as any),
                 catchError((e) => of({ error: true, message: `Create user: ${e}` }))
             );
     }
@@ -144,8 +127,7 @@ class BioWardrobe {
                         return DDPConnection.call('satellite/accounts/createLab', user._id, l.name, l.description);
                     }
                     return of(null)
-                },
-                    (biowardrobeRecord, labId, outerIndex, innerIndex) => ({ labId, biowardrobeRecord })),
+                }, (biowardrobeRecord, labId, outerIndex, innerIndex) => ({ labId, biowardrobeRecord })),
                 filter(_ => !!_.labId),
                 reduce((acc, val) => {
                     Labs.update({ _id: val.labId }, {
@@ -173,13 +155,13 @@ class BioWardrobe {
                     const lab: any = Labs.findOne({ "biowardrobe_import.laboratory_id": p.laboratory_id });
                     if (!project && lab) {
                         Log.error(`Add project: ${p.name} to the lab ${lab.name}`);
+                        const description = p['description'] || "";
                         return DDPConnection.call('satellite/projects/createProject',
                             { _id: lab['_id'], name: lab['name'], main: true },
-                            { name: p['name'], description: p['description'] });
+                            { name: p['name'], description: description });
                     }
                     return of(null);
-                },
-                    (biowardrobeRecord, projectId, outerIndex, innerIndex) => ({ projectId, biowardrobeRecord })),
+                }, (biowardrobeRecord, projectId, outerIndex, innerIndex) => ({ projectId, biowardrobeRecord })),
                 filter(_ => !!_.projectId),
                 reduce((acc, val) => {
                     Log.info(`Update project: ${val.projectId} `);
@@ -233,7 +215,6 @@ class BioWardrobe {
     static getSamples() {
         return BioWardrobeMySQL.getExperiments().pipe(
             switchMap((es) => of(...es[0])),
-            filter(_ => _.deleted === 0),
             mergeMap((e) => {
                 const sample = Samples.findOne({ 'biowardrobe_import.sample_uid': e.uid });
                 if (sample) {
@@ -316,6 +297,7 @@ class BioWardrobe {
                 e['laboratory'] = Labs.findOne({ "biowardrobe_import.laboratory_id": e.laboratory_id });
 
                 if (!e['project'] || !e['laboratory']) {
+                    _laboratories[e.laboratory_id] = 1;
                     return of(null);
                 }
 
@@ -342,7 +324,7 @@ class BioWardrobe {
                         $and: [
                             { "projectId": "Mrx3c92PKkipTBMsA" }, // Default project for all precomputed data
                             { "cwlId": _upstream_id },
-                            { "inputs.genome": { $regex: ".*" + e['db'] + ".*" } }
+                            { "inputs.genome": { $regex: ".*\(" + e['db'] + "\).*" } }
                         ]
                     } as any);
 
@@ -396,10 +378,12 @@ class BioWardrobe {
                 (biowardrobeRecord, sample, outerIndex, innerIndex) => ({ sample, biowardrobeRecord })),
             filter((e) => {
                 const exp = e.sample;
-                return exp && exp['cwl'] && exp['cwl']._id && exp['project']._id && exp['params'] && exp['params']['bambai_pair'] && exp['etype'].includes('RNA')
+                return exp && exp['cwl'] && exp['cwl']._id && exp['project']._id && exp['params'] && exp['params']['bambai_pair']; // && exp['etype'].includes('RNA')
             }),
             mergeMap((e) => {
                 const exp = e.sample;
+                Log.error('No sample with uid:', exp.uid );
+
                 let _sample = {
                     "userId": exp['userId'],
                     "author": exp['author'],
@@ -486,6 +470,7 @@ Meteor.startup(() => {
             ).subscribe((c) => {
                 if (c) {
                     Log.debug("Sync stream, subscribed!", c);
+                    Log.info("Laboratories!", _.keys(_laboratories));
                 }
             });
     }

@@ -13,14 +13,14 @@ import { Log } from '../logger';
 import { Subscriber } from 'rxjs/Subscriber';
 
 
-export const experimentType = {
-    1: 'DNA-Seq',
-    2: 'DNA-Seq pair',
-    3: 'RNA-Seq',
-    4: 'RNA-Seq pair',
-    5: 'RNA-Seq dUTP',
-    6: 'RNA-Seq dUTP pair'
-};
+// export const experimentType = {
+//     1: 'DNA-Seq',
+//     2: 'DNA-Seq pair',
+//     3: 'RNA-Seq',
+//     4: 'RNA-Seq pair',
+//     5: 'RNA-Seq dUTP',
+//     6: 'RNA-Seq dUTP pair'
+// };
 
 export const right_where=
     "( laboratory_id = (select laboratory_id from worker where shadow=?)"+
@@ -127,11 +127,11 @@ export class BioWardrobeMySQL {
             tagstotal, tagsmapped, tagssuppressed, tagsused, tagsribo, params,
             fragmentsize, fragmentsizeest, fragmentsizeexp, fragmentsizeforceuse, notes, protocol, islandcount,
             experimenttype_id, browsergrp, browsershare, forcerun, rmdup, antibodycode, trim3, trim5, control,
-            control_id, genome_id, download_id, l.laboratory_id, antibody_id, 
-            
-        e.etype, e.workflow, e.template, e.upload_rules, 
+            control_id, genome_id, download_id, l.laboratory_id, antibody_id,
 
-        g.db, g.findex, g.annotation, g.annottable, g.genome, g.gsize as genome_size, 
+        e.etype, e.workflow, e.template, e.upload_rules,
+
+        g.db, g.findex, g.annotation, g.annottable, g.genome, g.gsize as genome_size,
 
         COALESCE(l.trim5,0) as clip_5p_end, COALESCE(l.trim3,0) as clip_3p_end,
         COALESCE(fragmentsizeexp,0) as exp_fragment_size, COALESCE(fragmentsizeforceuse,0) as force_fragment_size,
@@ -141,13 +141,13 @@ export class BioWardrobeMySQL {
         COALESCE(a.properties,0) as broad_peak, author, a.antibody,
 
         COALESCE(w.email,'') as email
-        
+
         from labdata l
         inner join (experimenttype e,genome g ) ON (e.id=experimenttype_id and g.id=genome_id)
         LEFT JOIN (antibody a) ON (l.antibody_id=a.id)
         LEFT JOIN (worker w) ON (l.worker_id=w.id)
-             
-             where egroup_id is not null and libstatus > 2 and libstatus < 100
+
+             where egroup_id is not null and libstatus > 2 and libstatus < 100 and deleted=0
             `
         );
     }
@@ -176,28 +176,27 @@ export class BioWardrobeMySQL {
 
 }
 
-
-export function get_experiments(){
-    return new Promise((resolve, reject) => {
-        mysqlPool.getConnection(function (err, connection) {
-            connection.query(
-                'SELECT id,uid,name4browser, author, egroup_id,deleted,groupping,cells,conditions,size,'+
-                'dateadd,datedel, dateanalyzed,dateanalyzes, dateanalyzee,libstatus,libstatustxt,url,filename,filenameold,' +
-                '`tagstotal`, `tagsmapped`, `tagssuppressed`, `tagsused`, `tagsribo`,params,'+
-                '`fragmentsize`,`fragmentsizeest`,`fragmentsizeexp`,`fragmentsizeforceuse`, notes,protocol,islandcount,'+
-                'experimenttype_id,browsergrp,browsershare,forcerun,rmdup,antibodycode,trim3,trim5,control,' +
-                'control_id,genome_id,download_id,laboratory_id,antibody_id'+
-                ' from labdata where egroup_id is not null and libstatus > 0 and libstatus < 100'
-                , [],
-                function (err, rows, fields) {
-                    connection.release();
-                    if (err == null && rows.length > 0) {
-                        resolve(rows);
-                    } else {
-                        reject('nothing');
-                    }
-                });
-        });
-    });
-}
+// export function get_experiments(){
+//     return new Promise((resolve, reject) => {
+//         mysqlPool.getConnection(function (err, connection) {
+//             connection.query(
+//                 'SELECT id,uid,name4browser, author, egroup_id,deleted,groupping,cells,conditions,size,'+
+//                 'dateadd,datedel, dateanalyzed,dateanalyzes, dateanalyzee,libstatus,libstatustxt,url,filename,filenameold,' +
+//                 '`tagstotal`, `tagsmapped`, `tagssuppressed`, `tagsused`, `tagsribo`,params,'+
+//                 '`fragmentsize`,`fragmentsizeest`,`fragmentsizeexp`,`fragmentsizeforceuse`, notes,protocol,islandcount,'+
+//                 'experimenttype_id,browsergrp,browsershare,forcerun,rmdup,antibodycode,trim3,trim5,control,' +
+//                 'control_id,genome_id,download_id,laboratory_id,antibody_id'+
+//                 ' from labdata where egroup_id is not null and libstatus > 0 and libstatus < 100'
+//                 , [],
+//                 function (err, rows, fields) {
+//                     connection.release();
+//                     if (err == null && rows.length > 0) {
+//                         resolve(rows);
+//                     } else {
+//                         reject('nothing');
+//                     }
+//                 });
+//         });
+//     });
+// }
 
