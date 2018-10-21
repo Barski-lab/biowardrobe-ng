@@ -313,24 +313,24 @@ class BioWardrobe {
                 };
 
                 e['cwl'] = CWLCollection.findOne(
-                    { "description.url": "https://raw.githubusercontent.com/datirium/workflows/master/workflows/" + e["workflow"] });
+                    { "git.path": "workflows/" + e["workflow"] });
 
                 if (!e['cwl'] || !e['cwl']._id) {
                     return of(null);
                 }
 
-                const _upstream_data = (_upstream_id) => Samples.findOne(
+                const _upstream_data = Samples.findOne(
                     {
                         $and: [
                             { "projectId": "Mrx3c92PKkipTBMsA" }, // Default project for all precomputed data
-                            { "cwlId": _upstream_id },
-                            { "inputs.genome": { $regex: ".*\(" + e['db'] + "\).*" } }
+                            // { "cwlId": _upstream_id },
+                            { "inputs.genome": e['db'] }
                         ]
                     } as any);
+                e['upstreams'] = { 'genome_indices': _upstream_data };
 
                 if (e['etype'].includes('RNA')) {
 
-                    e['upstreams'] = { 'star_index': _upstream_data("KcfBXjQtF6vNzXosK") }; // STAR
                     e['pie'] = {
                         colors: ['#b3de69', '#99c0db', '#fb8072', '#fdc381'],
                         data: [
@@ -347,7 +347,6 @@ class BioWardrobe {
                         "catalog": (e["antibodycode"] || "").trim()
                     });
 
-                    e['upstreams'] = { 'bowtie_index': _upstream_data("3PfggtmrE3FBdrPcy") }; // bowtie
                     e['pie'] = {
                         colors: ['#b3de69', '#99c0db', '#fb8072', '#fdc381'],
                         data: [
