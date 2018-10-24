@@ -387,16 +387,17 @@ class BioWardrobe {
                     "userId": exp['userId'],
                     "author": exp['author'],
                     "cwlId": exp['cwl']._id,
-                    "metadata": exp['metadata'],
                     "projectId": exp['project']._id,
-                    "inputs": exp['input'],
-                    "upstreams": exp['upstreams'],
                     "date": {
                         "created": new Date(exp['dateadd']),
                         "analyzed": new Date(exp['dateanalyzed']),
                         "analyse_start": new Date(exp['dateanalyzes']),
                         "analyse_end": new Date(exp['dateanalyzee']),
                     },
+                    "metadata": exp['metadata'],
+                    "upstream": exp['upstreams'],
+                    "inputs": exp['input'],
+                    "outputs": exp['params'],
                     "preview": {
                         "position1": exp['metadata']['cells'],
                         "position2": exp['metadata']['alias'],
@@ -404,8 +405,7 @@ class BioWardrobe {
                         "visualPlugins": [
                             { "pie": exp['pie'] }
                         ]
-                    },
-                    "outputs": exp['params']
+                    }
                 };
                 // Log.error('Missed record uid:', e.biowardrobeRecord.uid);
                 return DDPConnection.call('satellite/projects/createSample',
