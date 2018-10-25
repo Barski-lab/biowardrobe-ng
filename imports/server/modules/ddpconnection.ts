@@ -3,9 +3,9 @@ import { Mongo } from 'meteor/mongo';
 
 import { Observable } from 'rxjs/Observable';
 import { Subscriber } from 'rxjs/Subscriber';
-import { bindCallback } from 'rxjs/observable/bindCallback';
-import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
-import { fromEvent } from 'rxjs/observable/fromEvent';
+// import { bindCallback } from 'rxjs/observable/bindCallback';
+// import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
+// import { fromEvent } from 'rxjs/observable/fromEvent';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
 import { switchMap, combineAll, catchError } from 'rxjs/operators';
 import { Subject } from 'rxjs/Subject';
@@ -21,15 +21,10 @@ import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 export class DDPConnection {
     private static DDPConnection: DDP.DDPStatic = null;
     private static _hooks = {};
-    private static _messages = { active: [], backup: [] };
+    // private static _messages = { active: [], backup: [] };
 
     public static sync$ = new BehaviorSubject(null);
 
-    private _satelite_ch;
-
-    private satellitesubscription;
-
-    private static chan_id;
 
     constructor() {
         if (Meteor.settings['rc_server']) {
@@ -124,6 +119,14 @@ export class DDPConnection {
         return this._observeChanges('satellite/samples', 'samples', Samples);
     }
 
+    /**
+     * Observe changes on a collection after subscription
+     * @param _subscription - subscription string
+     * @param _remote_collection_name - collection name on the other side
+     * @param _collection
+     * @param _callbacks
+     * @private
+     */
     private _observeChanges(_subscription, _remote_collection_name, _collection?, _callbacks?) {
         _callbacks = _callbacks || {
             added(id, fields) {
@@ -185,6 +188,11 @@ export class DDPConnection {
         });
     }
 
+    /**
+     * Subscribe to a remote publication, onReady call last param callback and return the result into observer
+     * @param name
+     * @param args
+     */
     public static subscribeAutorun<T>(name: string, ...args: any[]): Observable<T> {
         let lastParam = args[args.length - 1];
 
@@ -222,11 +230,11 @@ export class DDPConnection {
         });
     }
 
-    public static addMessage(newMsg) {
-        Log.debug('addMessage', newMsg);
-        // DDPConnection._messages.active.push (newMsg);
-        // DDPConnection._messages.backup.push (newMsg);
-    }
+    // public static addMessage(newMsg) {
+    //     Log.debug('addMessage', newMsg);
+    //     // DDPConnection._messages.active.push (newMsg);
+    //     // DDPConnection._messages.backup.push (newMsg);
+    // }
 
 
     /*
@@ -338,6 +346,12 @@ export class DDPConnection {
     // }
     //
     //
+
+    /**
+     *
+     * @param n - hook ID
+     * @param h
+     */
     public static registerHook(n, h) {
         if (!DDPConnection._hooks[n])
             DDPConnection._hooks[n] = [];

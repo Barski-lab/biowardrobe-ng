@@ -10,11 +10,11 @@ class ModuleLoader {
         Log.debug("Load remote module", newModule.getInfo().caption, newModule.getInfo().moduleId);
         var self = this;
         this.activeModules[newModule.getInfo().moduleId] = newModule;
-        DDPConnection.addMessage(newModule.getInfo());
+
         DDPConnection.registerHook(newModule.getInfo().type,
             {
                 'moduleId': newModule.getInfo().moduleId,
-                'moduleFunction': function(m):Promise<any> {
+                'moduleFunction': (m):Promise<any> => {
                     return self.activeModules[m.moduleId][m.func](m.params);
                 }
             }

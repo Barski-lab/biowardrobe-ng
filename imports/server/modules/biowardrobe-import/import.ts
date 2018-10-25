@@ -28,18 +28,6 @@ const Mustache = require('mustache');
 // delete Package.webapp.main;
 
 let _laboratories = {};
-// let genomes = {};
-// let antibody = {};
-// let company;
-
-// function lab_basic(id, prim = false) {
-//     let l = _laboratories[id];
-//     return {
-//         _id: l._id,
-//         name: l.name,
-//         main: prim
-//     };
-// }
 
 const stats = {
     storage: 0,
@@ -440,20 +428,6 @@ Meteor.startup(() => {
         Samples._ensureIndex({ "biowardrobe_import.sample_uid": 1 });
         Meteor.users._ensureIndex({ "biowardrobe_import.laboratory_id": 1 });
 
-        // Meteor.onConnection((c) => {
-        //     Log.debug('Connected', c);
-        //     c.onClose(() => {
-        //         if (!c.satellite) { return; }
-        //         Log.debug('onClose:', c.satellite._id);
-        //         if (c.satellite && c.satellite._id) {
-        //             let company = Companies.findOne({ '_id': c.satellite._id });
-        //             Companies.update({ "_id": company._id },
-        //                 { $set: { "satellite.connected": false } });
-        //             c['satellite'] = null;
-        //         }
-        //     });
-        // });
-
         DDPConnection.sync$
             .pipe(
                 filter(_ => !!_),
@@ -468,8 +442,8 @@ Meteor.startup(() => {
                 )
             ).subscribe((c) => {
                 if (c) {
-                    Log.debug("Sync stream, subscribed!", c);
-                    Log.info("Laboratories!", _.keys(_laboratories));
+                    Log.debug("Sync stream, subscribed:", c);
+                    Log.info("No project no Laboratories:", _.keys(_laboratories));
                 }
             });
     }

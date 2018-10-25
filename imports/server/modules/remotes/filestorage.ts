@@ -1,24 +1,24 @@
 import { Meteor } from 'meteor/meteor';
-import { AESencrypt, AESdecrypt } from 'meteor/ostrio:aes-crypto';
 
 import { Log } from '../logger';
 import { FileStorage } from '../../../collections/shared';
 import { moduleLoader } from './moduleloader';
 import { BaseModuleInterface } from './base.module.interface';
 import { passMonitor$ } from '../accounts';
-import {oauth2Model} from "../oauth/oauth2model";
 
 const crypto = require('crypto');
 const path = require('path');
 const request = require('request');
 const htmlparser = require('htmlparser2');
-
+// const url = require('url');
 
 interface paramsFormat {
     email: string;
     login: string;
     pass: string;
     userId: string;
+    session?: string;
+    forceLogin?: boolean;
 }
 
 /**
@@ -26,32 +26,100 @@ interface paramsFormat {
  */
 interface Info {
     moduleId: string;
-    caption: string;
-    type: string;
-    loginUrl: string;
-    viewListUrl: string;
-    downloadUrl: string;
-    private_key:  string;
-    private_iv:  string;
-    encryptKey: string,
-    token: string,
-    refreshSessionInterval: number,
-    auth: {
-        "login": string,
-        "pass": string
-    }
+    caption?: string;
+    type?: string;
+    loginUrl?: string;
+    viewListUrl?: string;
+    downloadUrl?: string;
+    private_key?:  string;
+    private_iv?:  string;
+    encryptKey?: string;
+    token?: string;
+    refreshSessionInterval?: number;
 }
 
 class FileStorageModule implements BaseModuleInterface {
 
     private _info: Info = null;
-    private app:any = undefined;
-    private routes = undefined;
+    private _intervalId;
+    private _passChangeSubscription;
 
+    /**
+     *
+     */
+    constructor (){
+        this.loadSettings();
+
+        if (!this._info.caption) { return; }
+
+        this._passChangeSubscription = passMonitor$
+            .subscribe((p) => {
+                p['forceLogin'] = true;
+                this.updateFileStorage(p).catch((e) => Log.error(e));
+            });
+
+        this._intervalId = Meteor.setInterval(() => {
+            FileStorage
+                .find({"active": true})
+                .forEach(item => {
+                    this.updateFileStorage({
+                        email:  item.email,
+                        login:  item.login,
+                        pass:   this.simpleDecrypt(item['param']),
+                        userId: item.userId,
+                        session: item.session
+                    }).catch((e) => Log.error(e));
+                })
+        }, this._info.refreshSessionInterval*1000);
+
+        // Give access to localhost to get details about authorized user
+        WebApp.rawConnectHandlers.use('/coredata', Meteor.bindEnvironment((req, res, next) => {
+            res.writeHead(200,{ 'Content-Type': 'text/plain'});
+            if(req.connection.remoteAddress!='127.0.0.1') {
+                res.end('');
+                return next();
+            }
+            Log.debug('[Query]:',req.query);
+            if(!req.query || !req.query['token'] || req.query['token'] !== this._info.token ) {
+                res.end('');
+                return next();
+            }
+            if(req.query && req.query['email']) {
+                let data = FileStorage.findOne({"email":req.query['email'].toLowerCase()});
+                if(data) {
+                    Log.debug('[CoreData]:', data);
+                    res.write(`${data['login']}\t${data['email']}\t${data['session']}\t${this.simpleDecrypt(data['param'])}\n`);
+                }
+            }
+            res.end('');
+            return next();
+        }));
+    }
+
+    /**
+     * Load default settings from config, if no setting throw exception?
+     */
+    private loadSettings () {
+        let moduleId = path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf(".")); // unique module identifier
+        this._info = Meteor.settings.remotes[moduleId] || {};
+
+        this._info = _.extend({
+            moduleId: moduleId
+        }, this._info);
+
+        this._info = _.defaults(this._info,{
+            refreshSessionInterval: 600
+        });
+    }
+
+    /**
+     *
+     * @param data
+     * @param key
+     * @param iv
+     */
     private encrypt (data: string, key: string, iv: string){
         if( !iv || !key ) { return; }
-        // key should be UTF-8 string 16 characters long
-        // let iv = key.split("").reverse().join("");
         let cipher = crypto.createCipheriv('aes-128-cbc',
             new Buffer(key,'base64'),
             new Buffer(iv, 'base64'));
@@ -59,246 +127,145 @@ class FileStorageModule implements BaseModuleInterface {
         return Buffer.concat([cipher.update(data), cipher.final()]).toString('base64');
     }
 
-    private decrypt (data: string, key: string, iv: string){
+    /**
+     *
+     * @param data
+     * @param key
+     * @param iv
+     */
+    private decrypt (data: string, key: string, iv: string) {
         if( !iv || !key ) { return; }
-        // key should be UTF-8 string 16 characters long
-        // let iv = key.split("").reverse().join("");
-        let decipher = crypto.createDecipheriv('aes-128-cbc',
+        const decipher = crypto.createDecipheriv('aes-128-cbc',
             new Buffer(key,'base64'),
             new Buffer(iv, 'base64'));
         decipher.setAutoPadding(true);
         let decrypted = decipher.update(data, 'base64', 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
-        // return Buffer.concat([cipher.update(data), cipher.final()]).toString('base64');
+        return decrypted + decipher.final('utf8');
     }
 
-    private switchDecrypt(paramEncrypted: string){
-        if(/^{"ct":"([A-Za-z0-9+\/]+(\={0,2}))","iv":"([0-9a-f]{32})","s"\:"([0-9a-f]{16})"}$/.test(paramEncrypted)) {
-            return AESdecrypt(paramEncrypted, this._info.encryptKey);
-        } else {
-            return this.decrypt(paramEncrypted, this._info.private_key, this._info.private_iv);
-        }
+    private simpleDecrypt(paramEncrypted: string) {
+        return this.decrypt(paramEncrypted, this._info.private_key, this._info.private_iv);
     }
 
-    private getAuthOptions (settings){
-        try {
-            return {
-                "login": settings.auth["login"],
-                "pass": settings.auth["pass"]
-            };
-        } catch (err){}
-        return null;
-    }
-
-    private loadSettings (): Boolean {
-        let moduleId = path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf(".")); // unique module identifier
-        let moduleSettings = Meteor.settings.remotes[moduleId];
-        this._info = {
-            moduleId:    moduleId,
-            caption:     moduleSettings["caption"] ? moduleSettings["caption"] : moduleId,
-            type:        moduleSettings["type"],                                                           // Should be deprecated later
-            loginUrl:    moduleSettings["loginUrl"],
-            viewListUrl: moduleSettings["viewListUrl"],
-            downloadUrl: moduleSettings["downloadUrl"],
-            token:       moduleSettings["token"],
-            private_key: moduleSettings["private_key"] ? moduleSettings["private_key"] : "",
-            private_iv:  moduleSettings["private_iv"] ? moduleSettings["private_iv"] : "",
-            encryptKey:  moduleSettings["encryptKey"] ? moduleSettings["encryptKey"] : "",
-            refreshSessionInterval: moduleSettings["refreshSessionInterval"] ? moduleSettings["refreshSessionInterval"] : 600,
-            auth:        this.getAuthOptions (moduleSettings)
-        };
-    }
-
-    constructor (){
-        try {
-            this.loadSettings();
-            passMonitor$.subscribe((p: paramsFormat) => {
-                if (this._info.auth && this._info.auth.login && this._info.auth.pass){
-                    p.login = this._info.auth.login;
-                    p.pass = this._info.auth.pass;
-                }
-                this.updateFileStorage (p);
-            });
-            Meteor.setInterval(() => {
-                FileStorage.find({$or:[{"active": true},{"active":{$exists:false}}]}).forEach(item => {
-                    this.updateFileStorage ({
-                        email:  item.email,
-                        login:  item.login,
-                        pass:   this.switchDecrypt(item['param']),
-                        userId: item.userId,
-                    });
-                })
-            }, this._info.refreshSessionInterval*1000);
-            WebApp.rawConnectHandlers.use('/coredata', Meteor.bindEnvironment((req, res, next) => {
-                res.writeHead(200,{ 'Content-Type': 'text/plain'});
-                if(req.connection.remoteAddress!='127.0.0.1') {
-                    res.end('');
-                    return next();
-                }
-                Log.debug('[Query]:',req.query);
-                if(!req.query || !req.query['token'] || req.query['token'] != this._info.token ) {
-                    res.end('');
-                    return next();
-                }
-                if(req.query && req.query['email']) {
-                    let data=FileStorage.findOne({"email":req.query['email'].toLowerCase()});
-                    if(data) {
-                        Log.debug('[CoreData]:', data);
-                        res.write(`${data['login']}\t${data['email']}\t${data['session']}\t${this.switchDecrypt(data['param'])}\n`);
-                    }
-                }
-                res.end('');
-                return next();
-            }));
-        } catch (err){
-            Log.debug("Error module configuration");
-        }
-    }
-
-
-    updateFileStorage (params: paramsFormat){
+    /**
+     *
+     * @param params
+     */
+    private updateFileStorage (params: paramsFormat) {
         let data = {
             "login": params.login,
             "param": this.encrypt(params.pass, this._info.private_key, this._info.private_iv),
             "email": params.email.toLowerCase(),
-            "timestamp": new Date()
+            "timestamp": new Date(),
+            "modified":  Date.now()/1000.0
         };
-        this.getFileList(params).then((filesWithSession)=> {
-            data["active"] = true;
-            data["files"] = filesWithSession.files;
-            data["session"] = filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value;
-            FileStorage.update({"userId": params.userId}, {$set: data}, {upsert: true});
-        }, (e)=> {
-            Log.debug("Failed to log in to file storage");
-            data["active"] = false;
-            data["files"] = [];
-            data["session"] = null;
-            FileStorage.update({"userId": params.userId}, {$set: data}, {upsert: true});
-        });
+        return this.getRawData(params)
+            .then(res => {
+                // Log.debug("getRawData success");
+                return this.formFileList(res);
+            })
+            .then(
+                Meteor.bindEnvironment((filesWithSession) => {
+                    Log.debug(`Updated for: ${params.login}`);
+                    data["active"] = true;
+                    data["files"] = filesWithSession.files;
+                    data["session"] = filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value;
+                    FileStorage.update({"userId": params.userId}, {$set: data}, {upsert: true});
+                }),
+                Meteor.bindEnvironment((e)=> {
+                    Log.debug("Failed to log in to file storage");
+                    data["active"] = false;
+                    data["files"] = [];
+                    data["session"] = null;
+                    FileStorage.update({"userId": params.userId}, {$set: data}, {upsert: true});
+                }));
     }
 
 
-    getFileList (params: {login: string, pass: string}) {
-        return this.getCookiesDefault()
-            .then(
-                res => {
-                    // Log.debug("getCookiesDefault success");
-                    return this.getCookies(res, params)
-                })
-            .then(
-                res => {
-                    // Log.debug("getCookies success");
-                    return this.getRawData(res)
-                })
-            .then(
-                res => {
-                    // Log.debug("getRawData success");
-                    return Promise.resolve(this.formFileList(res));
-                })
+    private getRawData(params: paramsFormat) {
+        if( params.session && !params.forceLogin) {
+            const cookiesJar = request.jar();
+            const cookie = request.cookie(`PHPSESSID=${params.session}`);
+            cookiesJar.setCookie(cookie, this._info.viewListUrl);
+            return this.getRawDataHelper(cookiesJar);
+        } else {
+            return this.startLoginProcess(params)
+                .then((c) => this.getRawDataHelper(c))
+        }
     }
 
+    private startLoginProcess (params: {login: string, pass: string, session?: string} ){
+        return new Promise((resolve, reject) => {
+            const cookiesJar = request.jar();
+            let _req = {
+                method: 'POST',
+                uri: this._info.loginUrl,
+                jar: cookiesJar,
+                followRedirects: true,
+                form: {
+                    username: params.login,
+                    password: params.pass
+                }
+            };
+            request( _req,
+                (error, res, body) => {
+                    return ( error || /LDAP login failed/.test(body)) ? reject({
+                        type: "login",
+                        error
+                    }) : resolve(cookiesJar);
+                }
 
-    getCookiesDefault (){
-        var cookies = request.jar();
-        return new Promise((resolve,reject)=>{
-            request(
-                {
-                    method: 'POST',
-                    uri: this._info.loginUrl,
-                    jar: cookies
-                },
-
-                Meteor.bindEnvironment(function(err,res,body)
-                    {
-                        if (err){
-                            reject(err);
-                        }
-                        resolve(cookies);
-                    }
-                )
             );
         });
     }
 
 
-    getCookies (cookies, params: {login: string, pass: string} ){
-        return new Promise((resolve,reject)=>{
-            request(
-                {
-                    method: 'POST',
-                    uri: this._info.loginUrl,
-                    jar: cookies,
-                    followRedirects: true,
-                    form:
-                        {
-                            username: params.login,
-                            password: params.pass
-                        }
-                },
-
-                Meteor.bindEnvironment(function(err,res,body)
-                    {
-                        if (err || /LDAP login failed/.test(body)){
-                            reject(err);
-                        }
-                        resolve(cookies);
-                    }
-                )
-            );
-        });
-    }
-
-
-    getRawData (cookies){
-        return new Promise((resolve,reject)=>{
+    private getRawDataHelper (cookiesJar) {
+        return new Promise((resolve, reject) => {
             request(
                 {
                     method: 'GET',
                     uri: this._info.viewListUrl,
-                    jar: cookies,
+                    jar: cookiesJar,
                 },
 
-                Meteor.bindEnvironment(function(err,res,body)
-                    {
-                        if (err){
-                            reject(err)
-                        }
-                        resolve( {rawData: body, cookies: cookies} );
-                    }
-                )
+                (error, res, body) => {
+                    return (error || /YOU NEED TO LOGIN TO SEE YOUR RESULTS/.test(body)) ? reject({
+                        type: "data",
+                        error
+                    }) : resolve( {rawData: body, cookies: cookiesJar} );
+                }
             );
         });
     }
 
 
-    formFileList (rawDataWithSession){
-        var fileList = [];
-        var insideListSection = false;
-        var insideNameSection = false;
-        var filename = null;
+    /**
+     * Parses getRawData output
+     * @param rawDataWithSession
+     */
+    private formFileList (rawDataWithSession) {
+        let fileList = [];
+        let insideListSection = false;
 
-        var parser = new htmlparser.Parser({
+        let parser = new htmlparser.Parser({
 
             onopentag: (name, attribs) => {
                 if(name === "li"){
                     insideListSection = true;
                 }
-                if(name === "u" && insideListSection){
-                    insideNameSection = true;
-                }
                 if (insideListSection && name === "a" && attribs != null && attribs.href != null){
-                    if (/downloadFile/.test (attribs.href)){
+                    if (/downloadFile/.test (attribs.href)) {
 
-                        var startPath = attribs.href.indexOf("('");
-                        var stopPath = attribs.href.indexOf("',");
-                        var fpath = attribs.href.substring(startPath+2, stopPath);
+                        let startPath = attribs.href.indexOf("('");
+                        let stopPath = attribs.href.indexOf("',");
+                        // let fpath = attribs.href.substring(startPath+2, stopPath);
 
-                        var startName = attribs.href.indexOf(", '");
-                        var stopName = attribs.href.indexOf("')");
-                        var fname = attribs.href.substring(startName+3, stopName);
+                        let startName = attribs.href.indexOf(", '");
+                        let stopName = attribs.href.indexOf("')");
+                        let fname = attribs.href.substring(startName+3, stopName);
 
-                        var link = this._info.downloadUrl + '?file=' + fpath + '&name=' + fname;
+                        // let link = this._info.downloadUrl + '?file=' + fpath + '&name=' + fname;
                         if (/fastq/.test(fname)){
                             fileList.push (fname)
                         }
@@ -310,35 +277,27 @@ class FileStorageModule implements BaseModuleInterface {
                 if(name === "li"){
                     insideListSection = false;
                 }
-                if(name === "u"){
-                    insideNameSection = false;
-                }
-            },
+            }
 
-
-            ontext: function(text){
-                if (insideListSection && insideNameSection){
-                    filename = text;
-                }
-            },
-
-
-        }, {decodeEntities: true});
+        }, { decodeEntities: true });
 
         parser.write(rawDataWithSession.rawData);
         parser.end();
 
         // Log.debug("formFileList success");
-        return {files: fileList, cookies: rawDataWithSession.cookies._jar.toJSON()};
+        return Promise.resolve({files: fileList, cookies: rawDataWithSession.cookies._jar.toJSON()});
     }
 
-    getInfo (){
-        return this._info ? _.omit(this._info, ["loginUrl", "viewListUrl", "downloadUrl", "private_key", "private_iv", "encryptKey", "token", "auth"]) : null;
-    }
 
+    getInfo () {
+        return {
+            moduleId: this._info.moduleId,
+            caption: this._info.caption,
+            type: this._info.type
+        };
+    }
 }
 
 Meteor.startup(() => {
-    var fileStorage = new FileStorageModule();
-    moduleLoader.addModule (fileStorage);
+    moduleLoader.addModule (new FileStorageModule());
 });
