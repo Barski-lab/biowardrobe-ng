@@ -35,6 +35,7 @@ interface Info {
     private_iv?:  string;
     encryptKey?: string;
     token?: string;
+    protocol?: string;
     refreshSessionInterval?: number;
 }
 
@@ -293,6 +294,7 @@ class FileStorageModule implements BaseModuleInterface {
         return {
             moduleId: this._info.moduleId,
             caption: this._info.caption,
+            protocol: this._info.protocol,
             type: this._info.type
         };
     }

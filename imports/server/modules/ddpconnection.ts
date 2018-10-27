@@ -1,22 +1,24 @@
 import { DDP } from 'meteor/ddp';
 import { Mongo } from 'meteor/mongo';
 
-import { Observable } from 'rxjs/Observable';
+import { Observable } from 'rxjs';
 import { Subscriber } from 'rxjs/Subscriber';
 // import { bindCallback } from 'rxjs/observable/bindCallback';
 // import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
 // import { fromEvent } from 'rxjs/observable/fromEvent';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
-import { switchMap, combineAll, catchError } from 'rxjs/operators';
+import { switchMap, combineAll, catchError, filter } from 'rxjs/operators';
 import { Subject } from 'rxjs/Subject';
 import { merge } from 'rxjs/observable/merge';
 import { combineLatest } from 'rxjs/observable/combineLatest';
 import { of } from 'rxjs/observable/of';
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+
+import { URL } from 'url';
 
 import { CWLCollection, Drafts, Labs, Projects, Samples } from '../../collections/shared'
 
 import { Log } from './logger';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 
 export class DDPConnection {
     private static DDPConnection: DDP.DDPStatic = null;
@@ -60,6 +62,47 @@ export class DDPConnection {
                     Log.info("Reconnecting");
                     return DDPConnection.call('satellite/auth', Meteor.settings.rc_server_token);
                 }),
+                filter(_ => !!_),
+                switchMap( (v) => {
+                    let modules = [];
+                    if(DDPConnection._hooks["files"]) {
+
+
+                        modules = DDPConnection._hooks["files"].map( h => {
+                            return {
+                                moduleId: h.info.moduleId,
+                                caption: h.info.caption,
+                                type: h.info.type,
+                                protocol: h.info.protocol
+                            };
+                        })
+                    }
+
+                    const abs_url = Meteor.absoluteUrl();
+                    const os = require( 'os' );
+                    const networkInterfaces = Object.values(os.networkInterfaces())
+                        .reduce( (r, a) => {
+                            r = r.concat(a);
+                            return r;
+                        }, [])
+                        .filter(({family, address}) => {
+                            let firstNumber = 1 * address.split('.')[0];
+                            return family.toLowerCase().indexOf('v4') >= 0 &&
+                                !address.startsWith('127') &&
+                                !address.startsWith('169.254') &&
+                                !(firstNumber >= 224 && firstNumber <= 239);
+                        })
+                        .map(({address}) => address);
+
+                    return DDPConnection.call('satellite/info', {
+                        "remoteModules": modules,
+                        "tech": {
+                            localip: networkInterfaces || [],
+                            absoluteUrl: abs_url || "",
+                            port: Meteor.isProduction ? process.env.PORT : 3030
+                        }
+                    });
+                }),
                 switchMap((v) => {
                     return combineLatest(this._usersSubs(), this._cwlSubs())
                 }),
@@ -75,6 +118,10 @@ export class DDPConnection {
         return fromEventPattern(DDP['onReconnect'],() => {});
     }
 
+    /**
+     * subscribe to User updates
+     * @private
+     */
     private _usersSubs(): any {
         return this._observeChanges('satellite/users', 'users', null, {
             // TODO: Has to organize it into a stream, somehow.
@@ -88,17 +135,17 @@ export class DDPConnection {
                     fields["_id"] = id;
                     Meteor.users.insert(fields);
                 } else
-                    if (_user && _user._id != id) {
-                        Log.info('Replace old user:', id, _user._id);
-                        _user['old_id'] = _user['old_id'] || [];
-                        _user['old_id'].push(_user._id);
-                        _user['_id'] = id;
-                        _user['roles'] = fields['roles'];
-                        _user['profile'] = fields['profile'];
-                        _user['emails'] = fields['emails'];
-                        Meteor.users.insert(_user);
-                        Meteor.users.remove({ _id: _user._id });
-                    }
+                if (_user && _user._id != id) {
+                    Log.info('Replace old user:', id, _user._id);
+                    _user['old_id'] = _user['old_id'] || [];
+                    _user['old_id'].push(_user._id);
+                    _user['_id'] = id;
+                    _user['roles'] = fields['roles'];
+                    _user['profile'] = fields['profile'];
+                    _user['emails'] = fields['emails'];
+                    Meteor.users.insert(_user);
+                    Meteor.users.remove({ _id: _user._id });
+                }
             }
         });
     }

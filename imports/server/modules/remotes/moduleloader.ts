@@ -14,6 +14,7 @@ class ModuleLoader {
         DDPConnection.registerHook(newModule.getInfo().type,
             {
                 'moduleId': newModule.getInfo().moduleId,
+                'info':newModule.getInfo(),
                 'moduleFunction': (m):Promise<any> => {
                     return self.activeModules[m.moduleId][m.func](m.params);
                 }
