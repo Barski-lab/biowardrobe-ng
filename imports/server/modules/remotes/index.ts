@@ -1,2 +1,2 @@
-import './filestorage'
-import './dummy-1.module'
+import './postform';
+import './localfiles';

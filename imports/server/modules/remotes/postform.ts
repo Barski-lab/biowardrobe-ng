@@ -1,7 +1,7 @@
 import { Meteor } from 'meteor/meteor';
+import { Mongo } from 'meteor/mongo';
 
 import { Log } from '../logger';
-import { FileStorage } from '../../../collections/shared';
 import { moduleLoader } from './moduleloader';
 import { BaseModuleInterface } from './base.module.interface';
 import { passMonitor$ } from '../accounts';
@@ -36,10 +36,47 @@ interface Info {
     encryptKey?: string;
     token?: string;
     protocol?: string;
+    collection?: any;
+    publication?: string;
     refreshSessionInterval?: number;
 }
 
-class FileStorageModule implements BaseModuleInterface {
+const moduleId = path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf("."));
+
+export function getCollectionParams (collectionNameDefault: string, nullConnectionDefault: boolean){
+    if (   Meteor.settings
+        && Meteor.settings.remotes
+        && Meteor.settings.remotes[moduleId]
+        && Meteor.settings.remotes[moduleId].collection
+        && Meteor.settings.remotes[moduleId].collection.name != undefined
+        && Meteor.settings.remotes[moduleId].collection.nullConnection != undefined){
+        return {"name": Meteor.settings.remotes[moduleId].collection.name, "nullConnection": Meteor.settings.remotes[moduleId].collection.nullConnection}
+    } else {
+        return {"name": collectionNameDefault, "nullConnection": nullConnectionDefault}
+    }
+}
+
+let collectionParams = getCollectionParams ( "postform_storage", false);
+
+export const ModuleCollection: any = collectionParams.nullConnection
+    ? new Mongo.Collection(collectionParams.name, {"connection": null}) : new Mongo.Collection(collectionParams.name);
+
+ModuleCollection.deny({
+    insert: function () {
+        return true;
+    },
+    update: function () {
+        return true;
+    },
+    remove: function () {
+        return true;
+    }
+});
+
+/**
+ *
+ */
+class PostFormModule implements BaseModuleInterface {
 
     private _info: Info = null;
     private _intervalId;
@@ -55,12 +92,12 @@ class FileStorageModule implements BaseModuleInterface {
 
         this._passChangeSubscription = passMonitor$
             .subscribe((p) => {
-                p['forceLogin'] = true;
+                p['forceLogin'] = true; // Force login first time, use session after
                 this.updateFileStorage(p).catch((e) => Log.error(e));
             });
 
         this._intervalId = Meteor.setInterval(() => {
-            FileStorage
+            ModuleCollection
                 .find({"active": true})
                 .forEach(item => {
                     this.updateFileStorage({
@@ -86,7 +123,7 @@ class FileStorageModule implements BaseModuleInterface {
                 return next();
             }
             if(req.query && req.query['email']) {
-                let data = FileStorage.findOne({"email":req.query['email'].toLowerCase()});
+                let data = ModuleCollection.findOne({"email":req.query['email'].toLowerCase()});
                 if(data) {
                     Log.debug('[CoreData]:', data);
                     res.write(`${data['login']}\t${data['email']}\t${data['session']}\t${this.simpleDecrypt(data['param'])}\n`);
@@ -101,16 +138,13 @@ class FileStorageModule implements BaseModuleInterface {
      * Load default settings from config, if no setting throw exception?
      */
     private loadSettings () {
-        let moduleId = path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf(".")); // unique module identifier
         this._info = Meteor.settings.remotes[moduleId] || {};
 
-        this._info = _.extend({
-            moduleId: moduleId
-        }, this._info);
-
-        this._info = _.defaults(this._info,{
-            refreshSessionInterval: 600
-        });
+        this._info = {
+            moduleId: moduleId,
+            refreshSessionInterval: 600,
+            ...this._info
+        };
     }
 
     /**
@@ -169,16 +203,24 @@ class FileStorageModule implements BaseModuleInterface {
                 Meteor.bindEnvironment((filesWithSession) => {
                     Log.debug(`Updated for: ${params.login}`);
                     data["active"] = true;
-                    data["files"] = filesWithSession.files;
+                    data["list"] = {
+                        path: '/',
+                        files: filesWithSession.files,
+                        folders: []
+                    };
                     data["session"] = filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value;
-                    FileStorage.update({"userId": params.userId}, {$set: data}, {upsert: true});
+                    ModuleCollection.update({"userId": params.userId}, {$set: data}, {upsert: true});
                 }),
                 Meteor.bindEnvironment((e)=> {
                     Log.debug("Failed to log in to file storage");
                     data["active"] = false;
-                    data["files"] = [];
+                    data["list"] = {
+                        path: '/',
+                        files: [],
+                        folders: []
+                    };
                     data["session"] = null;
-                    FileStorage.update({"userId": params.userId}, {$set: data}, {upsert: true});
+                    ModuleCollection.update({"userId": params.userId}, {$set: data}, {upsert: true});
                 }));
     }
 
@@ -195,6 +237,10 @@ class FileStorageModule implements BaseModuleInterface {
         }
     }
 
+    /**
+     *
+     * @param params
+     */
     private startLoginProcess (params: {login: string, pass: string, session?: string} ){
         return new Promise((resolve, reject) => {
             const cookiesJar = request.jar();
@@ -220,8 +266,11 @@ class FileStorageModule implements BaseModuleInterface {
         });
     }
 
-
-    private getRawDataHelper (cookiesJar) {
+    /**
+     *
+     * @param cookiesJar
+     */
+    private getRawDataHelper (cookiesJar): Promise<any> {
         return new Promise((resolve, reject) => {
             request(
                 {
@@ -295,11 +344,37 @@ class FileStorageModule implements BaseModuleInterface {
             moduleId: this._info.moduleId,
             caption: this._info.caption,
             protocol: this._info.protocol,
+            collection: this._info.collection.name,
+            publication: this._info.publication,
             type: this._info.type
         };
     }
 }
 
 Meteor.startup(() => {
-    moduleLoader.addModule (new FileStorageModule());
+    moduleLoader.addModule (new PostFormModule());
+});
+
+/////
+/////   Publications
+/////
+
+const ModuleCollectionFields = {
+    fields: {
+        userId: 1,
+        timestamp: 1,
+        active: 1,
+        list: 1
+    }
+};
+
+Meteor.publish(`module/${Meteor.settings.remotes[moduleId].publication}`, function () {
+    // Return only those document(s) where active is true (the file list is up to date) or where `active` field
+    // is not present at all (ModuleCollection has not been automatically updated yet)
+    Log.debug(`module/${Meteor.settings.remotes[moduleId].publication}`, this.userId);
+    if (this.userId) {
+        return ModuleCollection.find( {'userId': this.userId}, ModuleCollectionFields);
+    } else {
+        this.ready();
+    }
 });

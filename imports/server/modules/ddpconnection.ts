@@ -1,15 +1,14 @@
 import { DDP } from 'meteor/ddp';
 import { Mongo } from 'meteor/mongo';
 
-import { Observable } from 'rxjs';
-import { Subscriber } from 'rxjs/Subscriber';
+import { Observable, Subscriber } from 'rxjs';
 // import { bindCallback } from 'rxjs/observable/bindCallback';
 // import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
 // import { fromEvent } from 'rxjs/observable/fromEvent';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
 import { switchMap, combineAll, catchError, filter } from 'rxjs/operators';
-import { Subject } from 'rxjs/Subject';
-import { merge } from 'rxjs/observable/merge';
+// import { Subject } from 'rxjs/Subject';
+// import { merge } from 'rxjs/observable/merge';
 import { combineLatest } from 'rxjs/observable/combineLatest';
 import { of } from 'rxjs/observable/of';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
@@ -38,21 +37,21 @@ export class DDPConnection {
         if (!DDPConnection.DDPConnection) {
             DDPConnection.DDPConnection = DDP.connect(Meteor.settings.rc_server);
             Log.debug("Setting DDP connection to", Meteor.settings.rc_server);
-            Meteor['connection'] = DDPConnection.DDPConnection;
+            // Meteor['connection'] = DDPConnection.DDPConnection;
 
-            // Proxy the public methods of Meteor.connection so they can
-            // be called directly on Meteor.
-            [
-                'subscribe',
-                'methods',
-                'call',
-                'apply',
-                'status',
-                'reconnect',
-                'disconnect'
-            ].forEach(name => {
-                Meteor[name] = Meteor['connection'][name].bind(Meteor['connection']);
-            });
+            // // Proxy the public methods of Meteor.connection so they can
+            // // be called directly on Meteor.
+            // [
+            //     'subscribe',
+            //     'methods',
+            //     'call',
+            //     'apply',
+            //     'status',
+            //     'reconnect',
+            //     'disconnect'
+            // ].forEach(name => {
+            //     Meteor[name] = Meteor['connection'][name].bind(Meteor['connection']);
+            // });
 
         }
 
@@ -73,6 +72,8 @@ export class DDPConnection {
                                 moduleId: h.info.moduleId,
                                 caption: h.info.caption,
                                 type: h.info.type,
+                                collection: h.info.collection,
+                                publication: h.info.publication,
                                 protocol: h.info.protocol
                             };
                         })

@@ -1,7 +1,6 @@
 import { oauth2Model } from './oauth2model';
 import { Log } from '../logger';
 
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const oauthServer = require('oauth2-server');
