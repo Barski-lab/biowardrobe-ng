@@ -123,12 +123,24 @@ Meteor.publish(`module/${Meteor.settings.remotes[moduleId].publication}`, functi
         let folders = [];
 
         fs.readdirSync(dir).forEach(function(file) {
-            if (fs.statSync(path.join(dir, file)).isDirectory()) {
+            const _path = path.join(dir, file);
+            if (file.startsWith('.')) {
+                return;
+            }
+            try {
+                fs.accessSync(_path, fs.constants.R_OK);
+            } catch (err) {
+                return;
+            }
+            const _stat = fs.statSync(_path);
+
+            if (_stat.isDirectory()) {
                 folders.push(file);
             }
-            else {
+            else if (_stat.isFile()) {
                 files.push(file);
             }
+
         });
         return {files,folders};
     };
