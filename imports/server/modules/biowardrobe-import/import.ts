@@ -13,7 +13,7 @@ import {
 } from 'rxjs/operators';
 import { of } from 'rxjs/observable/of';
 
-import { DDPConnection } from '../ddpconnection';
+import { DDPConnection, connection } from '../ddpconnection';
 
 import {
     BioWardrobeMySQL,
@@ -90,7 +90,8 @@ class BioWardrobe {
     }
 
     /**
-     * Imports Laboratories into local laboratory mongo collection and syncs laboratories with remote server (trough 'satellite/accounts/createLab' call)
+     * Imports Laboratories into local laboratory mongo collection and syncs laboratories with remote server
+     * (trough 'satellite/accounts/createLab' call)
      */
     static getLaboratories() {
         return BioWardrobeMySQL.getLaboratories()
@@ -132,7 +133,8 @@ class BioWardrobe {
     }
 
     /**
-     * Imports Project (former Folders) into local project mongo collection and syncs projects with remote server (trough 'satellite/projects/createProject' call)
+     * Imports Project (former Folders) into local project mongo collection and syncs projects with remote server
+     * (trough 'satellite/projects/createProject' call)
      */
     static getProjects() {
         return BioWardrobeMySQL.getEgroups() // Projects now
@@ -231,7 +233,8 @@ class BioWardrobe {
                 const CHR_LENGTH_GENERIC_TSV = "chrNameLength.txt";
                 const ANNOTATION_GENERIC_TSV = "refgene.tsv";
 
-                let extra: any = {
+                e = {
+                    ...e,
                     "pair": e['etype'].includes('pair'),
                     "dUTP": e['etype'].includes('dUTP'),
                     "forcerun": e['forcerun'] === 1,
@@ -246,9 +249,9 @@ class BioWardrobe {
                     "threads": _settings['maxthreads'],
                     "experimentsdb": _settings['experimentsdb'],
                 };
-                Object.assign(e, extra);
 
-                extra = {
+                e = {
+                    ...e,
                     "fastq_file_upstream": ['file:/', e["raw_data"], e["uid"], e["uid"] + '.fastq.bz2'].join('/'),
                     "fastq_file_downstream": ['file:/', e["raw_data"], e["uid"], e["uid"] + '_2.fastq.bz2'].join('/'),
                     "star_indices_folder": ['file:/', e["indices"], STAR_INDICES, e["findex"]].join('/'),
@@ -260,7 +263,6 @@ class BioWardrobe {
                     "output_folder": [e["raw_data"], e["uid"]].join('/'),
                     "control_file": e['control_id'] ? [e["raw_data"], e["control_id"], e["control_id"] + '.bam'].join('/') : ""
                 };
-                Object.assign(e, extra);
 
                 let input = JSON.parse(
                     Mustache.render(
@@ -330,10 +332,11 @@ class BioWardrobe {
                     };
                 } else {
 
-                    Object.assign(e["metadata"], {
+                    e["metadata"] = {
+                        ...e["metadata"],
                         "antibody": (e["antibody"] || "").trim(),
                         "catalog": (e["antibodycode"] || "").trim()
-                    });
+                    };
 
                     e['pie'] = {
                         colors: ['#b3de69', '#99c0db', '#fb8072', '#fdc381'],
@@ -428,18 +431,20 @@ Meteor.startup(() => {
         Samples._ensureIndex({ "biowardrobe_import.sample_uid": 1 });
         Meteor.users._ensureIndex({ "biowardrobe_import.laboratory_id": 1 });
 
-        DDPConnection.sync$
+        connection.sync$
             .pipe(
-                filter(_ => !!_),
-                switchMap(() =>
-                    of(
+                switchMap((v) => {
+                    if (!v) {
+                        return of(null)
+                    }
+                    return of(
                         BioWardrobe.getWorkers(),
                         BioWardrobe.getLaboratories(),
                         BioWardrobe.getProjects(),
                         BioWardrobe.getProjectShares(),
                         BioWardrobe.getSamples()
                     ).pipe(concatAll())
-                )
+                })
             ).subscribe((c) => {
                 if (c) {
                     Log.debug("Sync stream, subscribed:", c);

@@ -1,6 +1,5 @@
-// import './filestorage'
-// import './sync'
-import './accounts'
-import './drafts'
-import './samples'
-import './lib'
+import './accounts';
+import './drafts';
+import './filesupload';
+import './lib';
+import './samples';

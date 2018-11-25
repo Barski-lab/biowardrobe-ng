@@ -2,7 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { check } from 'meteor/check';
 
 import { Log } from '../modules/logger';
-import { CWLs } from '../../collections/shared';
+import { CWLCollection } from '../../collections/shared';
 
 const CWLPublishFields = {
     fields: {}
@@ -13,7 +13,7 @@ const CWLPublishFields = {
 Meteor.publish('cwl/list', function (params = {}) {
     Log.debug('cwl/list',this.userId, params);
     if (this.userId) {
-        return CWLs.find(params, CWLPublishFields);
+        return CWLCollection.find(params, CWLPublishFields);
     } else {
         this.ready();
     }

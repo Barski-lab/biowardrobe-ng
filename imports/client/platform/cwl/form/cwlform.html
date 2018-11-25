@@ -29,15 +29,15 @@
             </mat-slide-toggle>
 
             <ng-template [ngSwitchCase]="'File'">
-                <bw-uploadpanel *ngIf="_allowUpload"
-                                [fileCollection]="_uploadService.getFilesUploadCollection()"
-                                [storagePath]="_inputFolder"
-                                [bwControl]="_cwlService.formGroupInputs.controls[e.key]"></bw-uploadpanel>
-                <bw-cloudloader-button *ngIf="_allowUpload"
-                                       [directories]="directories"
-                                       [label]="'DNA Core'"
-                                       [bwControl]="_cwlService.formGroupInputs.controls[e.key]">
-                </bw-cloudloader-button>
+                <!--<bw-uploadpanel *ngIf="_allowUpload"-->
+                                <!--[fileCollection]="_uploadService.getFilesUploadCollection()"-->
+                                <!--[storagePath]="_inputFolder"-->
+                                <!--[bwControl]="_cwlService.formGroupInputs.controls[e.key]"></bw-uploadpanel>-->
+                <!--<bw-cloudloader-button *ngIf="_allowUpload"-->
+                                       <!--[directories]="directories"-->
+                                       <!--[label]="'DNA Core'"-->
+                                       <!--[bwControl]="_cwlService.formGroupInputs.controls[e.key]">-->
+                <!--</bw-cloudloader-button>-->
             </ng-template>
         </div>
     </mat-tab>

@@ -10,7 +10,7 @@ import { BWCloudLoaderDialog } from './bwcloudloaderdialog.component';
 import { BWCloudLoaderButton } from './bwcloudloaderbutton.component';
 import { BWTable } from './bwtable.component';
 
-import { BWUploadPanelModule } from './bwuploadpanel/bwuploadpanel.module';
+// import { BWUploadPanelModule } from './bwuploadpanel/bwuploadpanel.module';
 
 import {
     MatSelectModule,
@@ -117,7 +117,7 @@ const BW_COMPONENTS:Array<any> = [
 ];
 
 const BW_MODULES:Array<any> = [
-    BWUploadPanelModule
+    // BWUploadPanelModule
 ];
 
 @NgModule({

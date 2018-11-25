@@ -2,70 +2,57 @@ import { DDP } from 'meteor/ddp';
 import { Mongo } from 'meteor/mongo';
 
 import { Observable, Subscriber } from 'rxjs';
-// import { bindCallback } from 'rxjs/observable/bindCallback';
-// import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
-// import { fromEvent } from 'rxjs/observable/fromEvent';
-import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
-import { switchMap, combineAll, catchError, filter } from 'rxjs/operators';
-// import { Subject } from 'rxjs/Subject';
-// import { merge } from 'rxjs/observable/merge';
+import { switchMap, catchError, filter, shareReplay } from 'rxjs/operators';
 import { combineLatest } from 'rxjs/observable/combineLatest';
+import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
 import { of } from 'rxjs/observable/of';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 
-import { URL } from 'url';
-
-import { CWLCollection, Drafts, Labs, Projects, Samples } from '../../collections/shared'
+import { CWLCollection, Drafts, Labs, Projects, Samples } from '../../collections/shared';
 
 import { Log } from './logger';
 
 export class DDPConnection {
     private static DDPConnection: DDP.DDPStatic = null;
     private static _hooks = {};
+    private public_key: string;
     // private static _messages = { active: [], backup: [] };
 
-    public static sync$ = new BehaviorSubject(null);
-
+    public get sync$() {
+        return this._do_connect();
+    }
 
     constructor() {
-        if (Meteor.settings['rc_server']) {
-            this._do_connect();
-        }
     }
 
     private _do_connect() {
+
+        if (!Meteor.settings.rc_server) {
+            return of(null);
+        }
+
         if (!DDPConnection.DDPConnection) {
             DDPConnection.DDPConnection = DDP.connect(Meteor.settings.rc_server);
             Log.debug("Setting DDP connection to", Meteor.settings.rc_server);
-            // Meteor['connection'] = DDPConnection.DDPConnection;
 
-            // // Proxy the public methods of Meteor.connection so they can
-            // // be called directly on Meteor.
-            // [
-            //     'subscribe',
-            //     'methods',
-            //     'call',
-            //     'apply',
-            //     'status',
-            //     'reconnect',
-            //     'disconnect'
-            // ].forEach(name => {
-            //     Meteor[name] = Meteor['connection'][name].bind(Meteor['connection']);
-            // });
+            // TODO: do not redefine default functions 'subscribe' etc
+            // Proxy the public methods of Meteor.connection so they can
+            // be called directly on Meteor.
 
         }
 
-        let x = this.onReconnect()
+        return this.onReconnect()
             .pipe(
                 switchMap((v) => {
                     Log.info("Reconnecting");
+                    this.public_key = undefined;
                     return DDPConnection.call('satellite/auth', Meteor.settings.rc_server_token);
                 }),
-                filter(_ => !!_),
-                switchMap( (v) => {
+                filter(({ satId, pubkey }) => !!satId),
+                switchMap( ({ satId, pubkey }) => {
                     let modules = [];
-                    if(DDPConnection._hooks["files"]) {
+                    this.public_key = pubkey;
 
+                    if(DDPConnection._hooks["files"]) {
 
                         modules = DDPConnection._hooks["files"].map( h => {
                             return {
@@ -81,11 +68,8 @@ export class DDPConnection {
 
                     const abs_url = Meteor.absoluteUrl();
                     const os = require( 'os' );
-                    const networkInterfaces = Object.values(os.networkInterfaces())
-                        .reduce( (r, a) => {
-                            r = r.concat(a);
-                            return r;
-                        }, [])
+                    const networkInterfaces = Object['values'](os.networkInterfaces())
+                        .reduce( (r, a) => r.concat(a), [])
                         .filter(({family, address}) => {
                             let firstNumber = 1 * address.split('.')[0];
                             return family.toLowerCase().indexOf('v4') >= 0 &&
@@ -110,13 +94,13 @@ export class DDPConnection {
                 switchMap((v) => {
                     return combineLatest(this._labsSubs(), this._projectsSubs(),this._samplesSubs())
                 }),
+                shareReplay(1),
                 catchError((e) => of({ error: true, message: `Reconnect error: ${e}` }))
-            )
-            .subscribe(DDPConnection.sync$);
+            );
     }
 
     private onReconnect<T>(): Observable<T> {
-        return fromEventPattern(DDP['onReconnect'],() => {});
+        return fromEventPattern(DDP['onReconnect']);
     }
 
     /**

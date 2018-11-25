@@ -6,7 +6,7 @@ import { FormGroup } from '@angular/forms';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { WorkflowFactory } from 'cwlts/models';
 
-import { CWLs } from '../../../collections/shared';
+import { CWLCollection } from '../../../collections/shared';
 
 import {
     BWServiceBase,
@@ -66,7 +66,7 @@ export class BWCWLService extends BWServiceBase {
     public getCWLs(params = {}):Observable<any> {
         console.log ("getCWLs", params);
         return this.MeteorSubscribeAutorun("cwl/list", params, () => {
-            let cwls = CWLs.find(params).fetch();
+            let cwls = CWLCollection.find(params).fetch();
             return cwls;
         }).shareReplay(1);
     }

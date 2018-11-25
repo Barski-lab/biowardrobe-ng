@@ -44,6 +44,7 @@
     "express-session": "^1.14.2",
     "htmlparser2": "^3.9.2",
     "js-yaml": "3.10.0",
+    "jsonwebtoken": "^8.4.0",
     "ldapjs": "^1.0.0",
     "meteor-node-stubs": "^0.3.2",
     "mustache": "^2.3.0",
