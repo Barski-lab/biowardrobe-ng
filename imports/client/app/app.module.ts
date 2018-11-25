@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { Ng2BootstrapModule } from 'ngx-bootstrap';
+import { TooltipModule } from 'ngx-bootstrap';
 import { HttpModule } from '@angular/http';
 
 import { AppComponent } from './app/app.component';
@@ -27,7 +27,7 @@ import { PlatformModule } from '../platform/platform.module'
         BrowserAnimationsModule,
         ReactiveFormsModule,
         RouterModule,
-        Ng2BootstrapModule,
+        TooltipModule,
         AppRouting,
         HttpModule,
         AuthModule.forRoot(),       // Note, we called forRoot() to import providers too
