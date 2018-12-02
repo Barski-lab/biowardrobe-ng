@@ -38,6 +38,7 @@
     "bcrypt": "^1.0.3",
     "body-parser": "^1.15.2",
     "cookie-parser": "^1.4.3",
+    "cors": "^2.8.5",
     "cwlts": "^1.15.29",
     "es6-shim": "^0.35.1",
     "express": "^4.14.0",

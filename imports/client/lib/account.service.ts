@@ -12,6 +12,7 @@ import {Tracker} from "meteor/tracker";
 
 const loginRoute = ['/login'];
 
+import { FileUpload } from './files';
 
 @Injectable()
 export class BWAccountService extends BWServiceBase {
@@ -36,6 +37,7 @@ export class BWAccountService extends BWServiceBase {
             this.isLoggedIn = !!this.currentUser;
             this.isLoggingIn = Meteor.loggingIn();
             this._account$.next(this);
+            console.log("xxx", FileUpload.find({}).fetch());
         });
     }
 

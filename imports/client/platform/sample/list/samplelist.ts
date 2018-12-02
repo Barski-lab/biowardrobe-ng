@@ -39,10 +39,10 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
     }
 
     private _refactorSampleData(singleSampleData, cwlData){
-        let dataFormated = singleSampleData.cwl.metadata;
-        dataFormated["created"] = singleSampleData.date.created;
+        let dataFormated = singleSampleData.metadata || {};
+        dataFormated["created"] = singleSampleData.date? singleSampleData.date.created: "";
         dataFormated["_id"] = singleSampleData["_id"];
-        dataFormated["cwlLabel"] = cwlData.find(singleCwl => {return singleCwl["_id"] == singleSampleData.cwl.cwlId}).description.label;
+        dataFormated["cwlLabel"] = cwlData.find(singleCwl => {return singleCwl["_id"] == singleSampleData.cwlId}); // .git.path;
         return dataFormated;
     }
 
@@ -50,6 +50,7 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
         this.tracked = this._sample.getSampleAll()
             .combineLatest(this._cwlService.getCWLs())
             .subscribe(dataCombined => {
+                console.log(dataCombined);
                 this._zone.run(() => {
                     this._data = dataCombined[0].map(singleSampleData => {
                         return this._refactorSampleData(singleSampleData, dataCombined[1]);

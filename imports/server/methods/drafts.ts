@@ -9,9 +9,9 @@ const DraftsAllowedFormIds = ['cwlform'];
 
 Meteor.methods({
     'drafts/upsert'(formId, obj) {
-        if (!Throttle.checkThenSet(this.connection.clientAddress+'_draftsUpsert', 2, 2000)) {
-            throw new Meteor.Error(500, 'Please wait at least 2s to try again');
-        }
+        // if (!Throttle.checkThenSet(this.connection.clientAddress+'_draftsUpsert', 2, 2000)) {
+        //     throw new Meteor.Error(500, 'Please wait at least 2s to try again');
+        // }
 
         if (!this.userId) throw new Meteor.Error(403, 'User not found');
         check(formId, Match.Where(fid => _.contains(DraftsAllowedFormIds, fid)) );
@@ -29,9 +29,9 @@ Meteor.methods({
     },
 
     'drafts/reset'(formId, obj) {
-        if (!Throttle.checkThenSet(this.connection.clientAddress+'_draftsReset', 2, 2000)) {
-            throw new Meteor.Error(500, 'Please wait at least 2s to try again');
-        }
+        // if (!Throttle.checkThenSet(this.connection.clientAddress+'_draftsReset', 2, 2000)) {
+        //     throw new Meteor.Error(500, 'Please wait at least 2s to try again');
+        // }
 
         if (!this.userId) throw new Meteor.Error(403, 'User not found');
         check(formId,Match.Where((fid) => _.contains(DraftsAllowedFormIds, fid)));

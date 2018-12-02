@@ -6,8 +6,7 @@ import { Samples } from '../../collections/shared';
 
 const samplesPublishFields = {
     fields: {
-        date: 1,
-        cwl: 1
+        biowardrobe_import: 0
     }
 };
 

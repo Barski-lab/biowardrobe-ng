@@ -8,6 +8,7 @@ export * from './service.base'
 export * from './tracking'
 export * from './valid'
 export * from './validators'
+export * from './files'
 
 
 

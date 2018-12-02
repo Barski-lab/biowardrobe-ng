@@ -51,14 +51,22 @@ export class BWLogin extends BWComponentBase implements OnInit {
             console.log(c, c.isLoggedIn);
             if (c.isLoggedIn) {
                 if(this.params && this.params.client_id) {
-                    this.post('', {
-                        "allow": 'yes',
-                        "token": localStorage.getItem('Meteor.loginToken'),
-                        "client_id": this.params.client_id,
-                        "redirect_uri": this.params.redirect_uri,
-                        "response_type": "code",
-                        "state": this.params.state
+                    let { client_id, redirect_uri, state } =  this.params;
+                    setTimeout( () => {
+                        this.post('/oauth/authorize', {
+                            "allow": 'yes',
+                            "token": localStorage.getItem('Meteor.loginToken'),
+                            "client_id": client_id,
+                            "redirect_uri": redirect_uri,
+                            "response_type": "code",
+                            "state": state
+                        });
+                    }, 1000 );
+                    // setTimeout(()=> {
+                    this._zone.run(() => {
+                        this._router.navigate(['/authorized']);
                     });
+                    // },100)
                 } else {
                     if (c['redirected']) { return; }
                     c['redirected'] = true;
