@@ -16,7 +16,15 @@ export const FilesUpload = new FilesCollection({
     parentDirPermissions: 0o0775,
     continueUploadTTL: 10800,      //This is Default - 10800 seconds = 3 hours
 
-    responseHeaders: (responseCode, fileRef, versionRef) => {
+
+    /**
+     * Should provide cors support, but!
+     * @param responseCode
+     * @param fileRef
+     * @param versionRef
+     * @return headers
+     */
+    responseHeaders (responseCode, fileRef, versionRef) {
         const headers = {};
 
         switch (responseCode) {
@@ -45,26 +53,30 @@ export const FilesUpload = new FilesCollection({
         return headers;
     },
 
-    // Files can be downloaded only by authorized users
-    // called right before initiate file download
-    // return true to continue
-    // return false to abort download
-
+    /**
+     * Files can be downloaded only by authorized users
+     * called right before initiate file download
+     * return true to continue
+     * return false to abort download
+     * @param fileObj
+     */
     // downloadCallback (fileObj: FileObj) {
-    //
-    // //     Log.debug("FileUpload downloadCallback", fileObj);
+    //     Log.debug("FileUpload downloadCallback", fileObj);
     //     Log.debug(this.userId);
-    // //
     //     return !!(this.userId);
     // },
 
-    // Files are served only to authorized users
-    // return true to continue
-    // return false to abort download
-    protected: function (fileObj: FileObj) {
+    /**
+     * Files are served only to authorized users (protects download) token in get query is required
+     * return true to continue
+     * return false to abort download
+     * @param fileObj
+     */
+    protected (fileObj: FileObj) {
 
         let telegram: any = {};
         let auth = false;
+
         if (! this.userId) {
             if(!this.request.query && !this.request.query.token) {
                 return false;
@@ -72,7 +84,7 @@ export const FilesUpload = new FilesCollection({
 
             let verifyOptions = {
                 subject: "download",
-                expiresIn: '1d',
+                expiresIn: '2h',
                 algorithm: ["ES512"]
             };
 
@@ -93,24 +105,33 @@ export const FilesUpload = new FilesCollection({
             }
             const user = AccessTokens.findOne(selector);
 
-            if (telegram.sub === 'download' && user) {
-                auth = true;
-            }
+            auth = ( telegram.sub === 'download' && !!user );
+
+            Log.debug('token auth userId:', user.userId)
+
         } else {
             auth = !!this.userId;
+
+            Log.debug('token internal auth userId:', this.userId)
         }
 
-        Log.debug(telegram);
+        // let session = this.request.cookies.x_mtok;
+        // let userId  = (Meteor.server.sessions[session] && Meteor.server.sessions[session].userId) ? Meteor.server.sessions[session].userId : null;
+        // Log.debug(this.request.cookies);
+        // Log.debug(this.response);
         return auth;
     },
 
-    // Files can be uploaded only by authorized users, token in meta authenticates that
-    // Callback, triggered right before upload is started on client and right after receiving a chunk on server
-    // return true to continue
-    // return false or {String} to abort upload
+    /**
+     * Files can be uploaded only by authorized users, token in meta authenticates that
+     * Callback, triggered right before upload is started on client and right after receiving a chunk on server
+     * return true to continue
+     * return false or {String} to abort upload
+     * @param fileData
+     */
     onBeforeUpload (fileData: FileData|any) {
-
         Log.debug(fileData);
+
         if (!fileData || !fileData.meta || !fileData.meta.token) {
             throw new Meteor.Error(500, "No token provided");
         }
@@ -143,11 +164,11 @@ export const FilesUpload = new FilesCollection({
 
         this.file.meta = {
             ...this.file.meta,
-            ...telegram
+            projectId: telegram.projectId,
+            inputId: telegram.inputId,
+            draftId: telegram.draftId,
+            sampleId: telegram.sampleId
         };
-        // JWT verification result:
-        // {"userId":"FeZrekod5j5wdPSTk","id":"M6dtqru5szrc8eXSY","projectId":"a4HRDmXhuyK3pkg6d","draft":"626PRNPxrs3QBw8ao","iat":1543405111,"exp":1543491511}
-
         return !!(this.userId);
     },
 
@@ -159,6 +180,10 @@ export const FilesUpload = new FilesCollection({
         return toSavePath;
     },
 
+    /**
+     * When upload is done call server's procedure and cleanup local's meta
+     * @param fileObj
+     */
     onAfterUpload (fileObj: any){
         if (!DDPConnection.connection) {
             return;
@@ -169,21 +194,25 @@ export const FilesUpload = new FilesCollection({
             throw new Meteor.Error(404, "no token");
         }
 
-        DDPConnection.call('satellite/file/uploaded', {token: fileObj.meta.token, link: FilesUpload.link(fileObj)})
+        DDPConnection.call('satellite/file/uploaded', {token: fileObj.meta.token, location: `file://${fileObj.path}`})
             .subscribe(() => {
-                FileUploadCollection.update({_id: fileObj._id}, {$unset:{"meta.token": 1}, $set:{"meta.synced": Date.now()/1000.0}});
+                FileUploadCollection.update({_id: fileObj._id},
+                    {
+                        $unset: {
+                            "meta.token": 1,
+                            "meta.iat": 1,
+                            "meta.exp": 1,
+                            "meta.userId": 1,
+                            "meta.fileId": 1
+                        },
+                        $set: {
+                            "meta.synced": Date.now()/1000.0
+                        }
+                    });
                 Log.debug('Updated?');
             });
 
-    }, //Alternatively use: addListener('afterUpload', func)
-
-    onAfterRemove (files:FileObj[]) {
-        if (!DDPConnection.connection) {
-            return;
-        }
-        Log.debug("FilesUpload onAfterRemove:", files)
-        // DDPConnection.call('satellite/file/removed');
-    },
+    } //Alternatively use: addListener('afterUpload', func)
 
     // namingFunction: function(fileObj:FileObj):string{}, - The Default returns the file's _id entry
 
@@ -199,8 +228,23 @@ Meteor.startup(() => {
 
 
 Meteor.methods({
-    'fileCollectionRemove' (id) {
+    'file/remove' (id) {
+        Log.debug('file/remove', id, this.userId);
+        if (! this.userId) {
+            throw new Meteor.Error(403, "Forbidden!");
+        }
         check(id, String);
+        let fileObj = FilesUpload.findOne({_id: id});
+
+        if (! fileObj ) {
+            throw new Meteor.Error(404, `File with ${id} can not be found!`)
+        }
+
+        DDPConnection.call('satellite/file/removed', {id: id, meta: fileObj.meta })
+            .subscribe(() => {
+                Log.debug('Removed?');
+            });
+
         FilesUpload.remove({_id: id}, (e)=>Log.error(e));
     }
 });

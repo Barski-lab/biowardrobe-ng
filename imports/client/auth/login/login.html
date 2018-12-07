@@ -6,7 +6,7 @@
         <bw-textinput [disabled]="submitting" [focus]="true" [image]="'fa-envelope'" [bwControl]="loginForm.controls.email"></bw-textinput>
         <bw-textinput [disabled]="submitting" [image]="'fa-lock'" [bwControl]="loginForm.controls.password"></bw-textinput>
 
-        <button type="submit" class="btn btn-blue pull-right" (click)="submit()">
+        <button type="submit" class="btn btn-blue pull-right" style="margin-right: 0px !important;" (click)="submit()">
             Login <i class="fa fa-arrow-circle-right"></i>
         </button>
         <a [routerLink]="['/forgot']">Forgot password</a>

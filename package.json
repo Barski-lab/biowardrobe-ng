@@ -4,7 +4,7 @@
   "postinstall": "typings i",
   "scripts": {
     "meteor": "ROOT_URL= MONGO1_URL=mongodb://localhost:27017/biowardrobe-ng meteor run --port 3030 --settings ./private/settings.json",
-    "debug": "ROOT_URL= MONGO_URL=mongodb://localhost:27017/biowardrobe-ng meteor --port 3030 --settings ./private/settings.json --raw-logs |./node_modules/bunyan/bin/bunyan",
+    "debug": "ROOT_URL=http://localhost:3030/ MONGO_URL=mongodb://localhost:27017/biowardrobe-ng meteor --port 3030 --settings ./private/settings.json --raw-logs |./node_modules/bunyan/bin/bunyan",
     "build": "AOT=1 ROLLUP=1 meteor build ../output && scp ../output/biowardrobe-ng.tar.gz devel:/meteor/biowardrobe-ng/ && rm -rf ../output",
     "test-full": "TEST_BROWSER_DRIVER=chrome meteor test --once --full-app --driver-package meteortesting:mocha --settings private/settings.json",
     "test": "ROOT_URL= meteor test --once --driver-package meteortesting:mocha --settings private/settings.json --raw-logs |./node_modules/bunyan/bin/bunyan",

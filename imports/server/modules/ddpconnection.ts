@@ -6,8 +6,8 @@
 import { DDP } from 'meteor/ddp';
 import { Mongo } from 'meteor/mongo';
 
-import { Observable, Subscriber } from 'rxjs';
-import { switchMap, catchError, filter, shareReplay } from 'rxjs/operators';
+import {BehaviorSubject, Observable, Subscriber} from 'rxjs';
+import { switchMap, catchError, filter, shareReplay, merge, share } from 'rxjs/operators';
 import { combineLatest } from 'rxjs/observable/combineLatest';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
 import { of } from 'rxjs/observable/of';
@@ -22,8 +22,10 @@ export class DDPConnection {
     private public_key: string;
     // private static _messages = { active: [], backup: [] };
 
+    _sync$: BehaviorSubject<any> = new BehaviorSubject<any>(null);
     public get sync$() {
-        return this._do_connect();
+        return this._sync$.pipe(filter(_ => !!_));
+        // return this._do_connect();
     }
 
     public get server_public_key() {
@@ -31,6 +33,7 @@ export class DDPConnection {
     }
 
     constructor() {
+        this._do_connect();
     }
 
     private _do_connect() {
@@ -97,15 +100,9 @@ export class DDPConnection {
                         }
                     });
                 }),
-                switchMap((v) => {
-                    return combineLatest(this._usersSubs(), this._cwlSubs())
-                }),
-                switchMap((v) => {
-                    return combineLatest(this._labsSubs(), this._projectsSubs(),this._samplesSubs())
-                }),
-                shareReplay(1),
+                merge(this._usersSubs(), this._cwlSubs(), this._labsSubs(), this._projectsSubs(),this._samplesSubs()),
                 catchError((e) => of({ error: true, message: `Reconnect error: ${e}` }))
-            );
+            ).subscribe(this._sync$);
     }
 
     private onReconnect<T>(): Observable<T> {
@@ -261,6 +258,7 @@ export class DDPConnection {
                             Log.debug('observeChanges stop subscription!', autoHandler.collection.name);
                             autoHandler.stop();
                         }
+                        observer.complete();
                     }
                 }
                 ]));
