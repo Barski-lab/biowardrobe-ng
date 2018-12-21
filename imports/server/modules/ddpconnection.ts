@@ -6,7 +6,7 @@
 import { DDP } from 'meteor/ddp';
 import { Mongo } from 'meteor/mongo';
 
-import {BehaviorSubject, Observable, Subscriber} from 'rxjs';
+import { BehaviorSubject, Observable, Subscriber, Subject } from 'rxjs';
 import { switchMap, catchError, filter, shareReplay, merge, share } from 'rxjs/operators';
 import { combineLatest } from 'rxjs/observable/combineLatest';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
@@ -22,10 +22,15 @@ export class DDPConnection {
     private public_key: string;
     // private static _messages = { active: [], backup: [] };
 
-    _sync$: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+    private _sync$: BehaviorSubject<any> = new BehaviorSubject<any>(null);
     public get sync$() {
         return this._sync$.pipe(filter(_ => !!_));
         // return this._do_connect();
+    }
+
+    private _main_events$: Subject<any> = new Subject<any>();
+    public get events$() {
+        return this._main_events$; //.pipe(share());
     }
 
     public get server_public_key() {
@@ -124,7 +129,7 @@ export class DDPConnection {
                 if (!_user) {
                     Log.debug(`satellite/users/added:`, id, fields);
                     fields["_id"] = id;
-                    Meteor.users.insert(fields);
+                    Meteor.users.update({_id: id}, fields, {upsert: true});
                 } else
                 if (_user && _user._id != id) {
                     Log.info('Replace old user:', id, _user._id);
@@ -166,21 +171,25 @@ export class DDPConnection {
      * @private
      */
     private _observeChanges(_subscription, _remote_collection_name, _collection?, _callbacks?) {
+        let self = this;
         _callbacks = _callbacks || {
             added(id, fields) {
-                Log.debug(`${_remote_collection_name}/added:`, id, _.keys(fields));
+                Log.debug(`${_remote_collection_name}/added:`, id, Object.keys(fields));
+                self._main_events$.next({name: _remote_collection_name, event: "added", id: id});
                 if (_collection) {
                     _collection.update({ _id: id }, { $set: fields }, { upsert: true });
                 }
             },
             changed(id, fields) {
-                Log.debug(`${_remote_collection_name}/changed:`, id, _.keys(fields));
+                Log.debug(`${_remote_collection_name}/changed:`, id, Object.keys(fields));
+                self._main_events$.next({name: _remote_collection_name, event: "changed", id: id});
                 if (_collection) {
                     _collection.update({ _id: id }, { $set: fields }, { upsert: true });
                 }
             },
             removed(id) {
                 Log.debug(`${_remote_collection_name}/removed:`, id);
+                self._main_events$.next({name: _remote_collection_name, event: "removed", id: id});
             }
         };
         return DDPConnection.subscribeAutorun(_subscription, () => {
