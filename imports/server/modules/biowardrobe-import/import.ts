@@ -398,6 +398,7 @@ class BioWardrobe {
                         ]
                     }
                 };
+                e.biowardrobeRecord["new_sample"] = _sample;
                 // Log.error('Missed record uid:', e.biowardrobeRecord.uid);
                 return DDPConnection.call('satellite/projects/createSample',
                     _sample);
@@ -405,6 +406,7 @@ class BioWardrobe {
             reduce((acc, val) => {
                 Log.info(`Update sample: ${val.sampleId} `);
 
+                Samples.update({ _id: val.sampleId }, val.biowardrobeRecord.new_sample, { upsert: true });
                 Samples.update({ _id: val.sampleId }, {
                     $set: {
                         biowardrobe_import: {

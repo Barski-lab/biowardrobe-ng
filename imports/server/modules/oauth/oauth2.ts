@@ -38,7 +38,7 @@ export class Auth2 {
     debugMiddle(req, res, next) {
         Log.debug('[OAuth2Server]:', req.method, req.url, req.body, req.user);
         return next();
-    };
+    }
 
     initRoutes(){
         let self = this;
@@ -62,6 +62,7 @@ export class Auth2 {
                     return res.sendStatus(401).send('No token');
                 }
                 var user = Meteor.users.findOne({
+                    //@ts-ignore
                     'services.resume.loginTokens.hashedToken': Accounts._hashLoginToken(req.body.token)
                 });
                 if (!user) {
