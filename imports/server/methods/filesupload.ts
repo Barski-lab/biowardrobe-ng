@@ -130,14 +130,13 @@ export const FilesUpload = new FilesCollection({
      * @param fileData
      */
     onBeforeUpload (fileData: FileData|any) {
-        Log.debug(fileData);
 
         if (!fileData || !fileData.meta || !fileData.meta.token) {
-            throw new Meteor.Error(500, "No token provided");
+            Log.error("No token provided!");
+            throw new Meteor.Error(500, "No token provided!");
         }
 
         check(fileData.meta.token, String );
-
 
         let verifyOptions = {
             algorithm: ["ES512"]
@@ -149,16 +148,17 @@ export const FilesUpload = new FilesCollection({
         try {
             telegram = jwt.verify(fileData.meta.token, publicKEY, verifyOptions);
         } catch (err) {
+            Log.error(err);
             throw new Meteor.Error(500, err);
         }
 
-        Log.debug("JWT verification result:", telegram);
-
         if (this.userId !== telegram.userId) {
+            Log.error(`Wrong user! ${this.userId}, ${telegram.userId}`);
             throw new Meteor.Error(404, "Wrong user!");
         }
 
         if (fileData._id !== telegram.fileId) {
+            Log.error(`Wrong fileId! ${fileData._id}, ${telegram.fileId}`);
             throw new Meteor.Error(404, "Wrong fileId!");
         }
 
@@ -173,10 +173,10 @@ export const FilesUpload = new FilesCollection({
     },
 
     storagePath (fileObj): string {
-        let toSavePath:string = Meteor.settings['uploadDirectory'];
-        if(fileObj && fileObj.meta && fileObj.meta.storagePath){
-            toSavePath = [toSavePath, fileObj.meta.storagePath].join('/').replace(/\/+/g,'/');
-        }
+        let toSavePath:string = `${Meteor.settings['systemRoot']}/http_upload/`.replace(/\/+/g,'/');
+        // if(fileObj && fileObj.meta && fileObj.meta.storagePath){
+        //     toSavePath = [toSavePath, fileObj.meta.storagePath].join('/').replace(/\/+/g,'/');
+        // }
         return toSavePath;
     },
 
@@ -229,6 +229,7 @@ Meteor.startup(() => {
 
 Meteor.methods({
     'file/remove' (id) {
+        // TODO: do not delete if a real file (not drafts) ?
         Log.debug('file/remove', id, this.userId);
         if (! this.userId) {
             throw new Meteor.Error(403, "Forbidden!");

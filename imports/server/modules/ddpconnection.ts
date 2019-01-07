@@ -12,7 +12,7 @@ import { combineLatest } from 'rxjs/observable/combineLatest';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
 import { of } from 'rxjs/observable/of';
 
-import { CWLCollection, Drafts, Labs, Projects, Samples } from '../../collections/shared';
+import { CWLCollection, Drafts, Labs, Projects, Samples, Requests } from '../../collections/shared';
 
 import { Log } from './logger';
 
@@ -31,6 +31,11 @@ export class DDPConnection {
     private _main_events$: Subject<any> = new Subject<any>();
     public get events$() {
         return this._main_events$; //.pipe(share());
+    }
+
+    private _requests$: Subject<any> = new Subject<any>();
+    public get requests$() {
+        return this._requests$;
     }
 
     public get server_public_key() {
@@ -105,7 +110,13 @@ export class DDPConnection {
                         }
                     });
                 }),
-                merge(this._usersSubs(), this._cwlSubs(), this._labsSubs(), this._projectsSubs(),this._samplesSubs()),
+                merge(
+                    this._usersSubs(),
+                    this._cwlSubs(),
+                    this._labsSubs(),
+                    this._projectsSubs(),
+                    this._samplesSubs(),
+                    this._requestsSubs()),
                 catchError((e) => of({ error: true, message: `Reconnect error: ${e}` }))
             ).subscribe(this._sync$);
     }
@@ -160,6 +171,22 @@ export class DDPConnection {
 
     private _samplesSubs(): any {
         return this._observeChanges('satellite/samples', 'samples', Samples);
+    }
+
+    private _requestsSubs(): any {
+        let self = this;
+        return this._observeChanges('satellite/requests', 'satellitesRequests', null, {
+                added(id, fields) {
+                    Log.debug(`satellitesRequests/added:`, id, fields);
+                    self._requests$.next({fields, name: 'requests', event: "added", _id: id });
+                    Requests.update({ _id: id }, { $set: fields }, { upsert: true });
+                },
+                removed(id) {
+                    Log.debug(`satellitesRequests/removed:`, id);
+                    // self._main_events$.next({name: _remote_collection_name, event: "removed", id: id});
+                }
+            }
+        );
     }
 
     /**
