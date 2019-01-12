@@ -178,12 +178,12 @@ export class DDPConnection {
         return this._observeChanges('satellite/requests', 'satellitesRequests', null, {
                 added(id, fields) {
                     Log.debug(`satellitesRequests/added:`, id, fields);
-                    self._requests$.next({fields, name: 'requests', event: "added", _id: id });
+                    self._requests$.next({...fields, name: 'requests', event: 'added', _id: id });
                     Requests.update({ _id: id }, { $set: fields }, { upsert: true });
                 },
                 removed(id) {
                     Log.debug(`satellitesRequests/removed:`, id);
-                    // self._main_events$.next({name: _remote_collection_name, event: "removed", id: id});
+                    Requests.remove({ _id: id });
                 }
             }
         );
@@ -202,21 +202,21 @@ export class DDPConnection {
         _callbacks = _callbacks || {
             added(id, fields) {
                 Log.debug(`${_remote_collection_name}/added:`, id, Object.keys(fields));
-                self._main_events$.next({name: _remote_collection_name, event: "added", id: id});
+                self._main_events$.next({name: _remote_collection_name, event: 'added', id: id});
                 if (_collection) {
                     _collection.update({ _id: id }, { $set: fields }, { upsert: true });
                 }
             },
             changed(id, fields) {
                 Log.debug(`${_remote_collection_name}/changed:`, id, Object.keys(fields));
-                self._main_events$.next({name: _remote_collection_name, event: "changed", id: id});
+                self._main_events$.next({name: _remote_collection_name, event: 'changed', id: id});
                 if (_collection) {
                     _collection.update({ _id: id }, { $set: fields }, { upsert: true });
                 }
             },
             removed(id) {
                 Log.debug(`${_remote_collection_name}/removed:`, id);
-                self._main_events$.next({name: _remote_collection_name, event: "removed", id: id});
+                self._main_events$.next({name: _remote_collection_name, event: 'removed', id: id});
             }
         };
         return DDPConnection.subscribeAutorun(_subscription, () => {
@@ -238,14 +238,14 @@ export class DDPConnection {
             throw Error('DDPConnection.call: callback will be provided');
         }
 
-        return Observable.create((observer: Subscriber<Meteor.Error | T>) => {
-            DDPConnection.DDPConnection.call(name, ...args.concat([
+        return Observable.create(Meteor.bindEnvironment( (observer: Subscriber<Meteor.Error | T>) => {
+            return DDPConnection.DDPConnection.call(name, ...args.concat([
                 (error: Meteor.Error, result: T) => {
                     error ? observer.error(error) : observer.next(result);
                     observer.complete();
                 }
             ]));
-        });
+        }));
     }
 
     public static apply<T>(name: string, args: EJSONable[], options?: {
