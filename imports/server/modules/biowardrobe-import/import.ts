@@ -172,11 +172,38 @@ class BioWardrobe {
                     const project = Projects.findOne({ "biowardrobe_import.project_id": p.id });
                     const lab: any = Labs.findOne({ "biowardrobe_import.laboratory_id": p.laboratory_id });
                     if (!project && lab) {
-                        Log.error(`Add project: ${p.name} to the lab ${lab.name}`);
-                        const description = p['description'] || "";
-                        return DDPConnection.call('satellite/projects/createProject',
-                            { _id: lab['_id'], name: lab['name'], main: true },
-                            { name: p['name'], description: description });
+                        if (!Meteor.settings.rc_server) {
+                            const _attachCWL = CWLCollection.find({
+                                $and: [
+                                    {
+                                        "servicetags": {
+                                            "$regex": "Basic Analysis",
+                                            "$options": "i"
+                                        }
+                                    }
+                                ]
+                            }, { _id: 1 }).fetch();
+                            const project_id = Projects.insert(
+                                {   "name": p['name'],
+                                    "description": p['description'] || "",
+                                    "labs": [
+                                        {
+                                            "_id": lab['_id'],
+                                            "name": lab['name'],
+                                            "main": true
+                                        }
+                                    ],
+                                    "modified": Date.now() / 1000.0,
+                                    "cwl": _attachCWL
+                                });
+                            return of(project_id);
+                        } else {
+                            Log.error(`Add project: ${p.name} to the lab ${lab.name}`);
+                            const description = p['description'] || "";
+                            return DDPConnection.call('satellite/projects/createProject',
+                                { _id: lab['_id'], name: lab['name'], main: true },
+                                { name: p['name'], description: description });
+                        }
                     }
                     return of(null);
                 }, (biowardrobeRecord, projectId, outerIndex, innerIndex) => ({ projectId, biowardrobeRecord })),
@@ -187,7 +214,8 @@ class BioWardrobe {
                     Projects.update({ _id: val.projectId }, {
                         $set: {
                             biowardrobe_import: {
-                                project_id: val.biowardrobeRecord.id
+                                project_id: val.biowardrobeRecord.id,
+                                synchronized: !!Meteor.settings.rc_server
                             }
                         }
                     }, { upsert: true });
