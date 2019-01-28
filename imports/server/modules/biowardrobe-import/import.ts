@@ -61,8 +61,20 @@ class BioWardrobe {
                     const email = w['email'].toLowerCase();
                     const user = Meteor.users.findOne({ 'emails.address': email });
                     if (!user) {
-                        Log.debug('Call createUser', w['fname'], w['lname'], email);
-                        return DDPConnection.call('satellite/accounts/createUser', w['fname'], w['lname'], email);
+                        if (!Meteor.settings.rc_server) {
+                            let userId = Accounts.createUser({
+                                email: email,
+                                profile: {
+                                    firstName: w['fname'],
+                                    lastName: w['lname'],
+                                }
+                            });
+                            Accounts.addEmail(userId, email, true);
+                            return of(userId);
+                        } else {
+                            Log.debug('Call createUser', w['fname'], w['lname'], email);
+                            return DDPConnection.call('satellite/accounts/createUser', w['fname'], w['lname'], email);
+                        }
                     }
                     if(!user["biowardrobe_import"]) {
                         return of(user['_id']);
@@ -79,7 +91,8 @@ class BioWardrobe {
                             biowardrobe_import: {
                                 laboratory_id: w['laboratory_id'],
                                 admin: w['admin'],
-                                laboratory_owner: w['changepass']
+                                laboratory_owner: w['changepass'],
+                                synchronized: !!Meteor.settings.rc_server
                             }
                         }
                     }, { upsert: true });
@@ -112,8 +125,22 @@ class BioWardrobe {
 
                     const lab = Labs.findOne({ "owner._id": user._id });
                     if (!lab) {
-                        Log.debug('Add lab:', user, l.name);
-                        return DDPConnection.call('satellite/accounts/createLab', user._id, l.name, l.description);
+                        if (!Meteor.settings.rc_server) {
+                            const uo: any = {
+                                name: l.name,
+                                description: l.description,
+                                modified: Date.now() / 1000.0,
+                                owner: {
+                                    _id: user._id,
+                                    lastName: user.profile.lastName,
+                                    firstName: user.profile.firstName
+                                }
+                            };
+                            return of(Labs.insert(uo));
+                        } else {
+                            Log.debug('Add lab:', user, l.name);
+                            return DDPConnection.call('satellite/accounts/createLab', user._id, l.name, l.description);
+                        }
                     }
                     return of(null)
                 }, (biowardrobeRecord, labId, outerIndex, innerIndex) => ({ labId, biowardrobeRecord })),
@@ -122,7 +149,8 @@ class BioWardrobe {
                     Labs.update({ _id: val.labId }, {
                         $set: {
                             biowardrobe_import: {
-                                laboratory_id: val.biowardrobeRecord.id
+                                laboratory_id: val.biowardrobeRecord.id,
+                                synchronized: !!Meteor.settings.rc_server
                             }
                         }
                     }, { upsert: true });
@@ -426,33 +454,37 @@ class BioWardrobe {
 
 
 Meteor.startup(() => {
-
     if (Meteor.settings['biowardrobe'] && Meteor.settings['biowardrobe']['db']) {
+
         Labs._ensureIndex({ "owner._id": 1 }, { unique: true });
         Labs._ensureIndex({ "biowardrobe_import.laboratory_id": 1 });
         Samples._ensureIndex({ "biowardrobe_import.sample_uid": 1 });
         Meteor.users._ensureIndex({ "biowardrobe_import.laboratory_id": 1 });
 
-        connection.sync$
-            .pipe(
-                switchMap((v) => {
-                    if (!v) {
-                        return of(null)
-                    }
-                    return of(
-                        BioWardrobe.getWorkers(),
-                        BioWardrobe.getLaboratories(),
-                        BioWardrobe.getProjects(),
-                        BioWardrobe.getProjectShares(),
-                        BioWardrobe.getSamples()
-                    ).pipe(concatAll())
-                })
-            ).subscribe((c) => {
-                if (c) {
-                    Log.debug("Sync stream, subscribed:", c);
-                    Log.info("No project no Laboratories:", _.keys(_laboratories));
+        function get_sync_type() {
+            return !!Meteor.settings.rc_server?connection.sync$:of(1);
+        }
+
+        get_sync_type().pipe(
+            switchMap((v) => {
+                if (!v) {
+                    Log.debug("V is not defined");
+                    return of(null)
                 }
-            });
+                return of(
+                    BioWardrobe.getWorkers(),
+                    BioWardrobe.getLaboratories(),
+                    BioWardrobe.getProjects(),
+                    BioWardrobe.getProjectShares(),
+                    BioWardrobe.getSamples()
+                ).pipe(concatAll())
+            })
+            ).subscribe((c) => {
+            if (c) {
+                Log.debug("Sync stream, subscribed:", c);
+                Log.info("No project no Laboratories:", _.keys(_laboratories));
+            }
+        });
     }
 });
 
