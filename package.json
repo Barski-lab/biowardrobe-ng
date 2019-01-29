@@ -53,6 +53,7 @@
     "mustache": "^2.3.0",
     "mysql": "^2.10.2",
     "ngx-bootstrap": "^2.0.3",
+    "nodegit": "^0.22.2",
     "oauth2": "0.0.1",
     "oauth2-server": "^2.4.1",
     "request": "^2.74.0",

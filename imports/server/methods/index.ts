@@ -3,3 +3,4 @@ import './drafts';
 import './filesupload';
 import './lib';
 import './samples';
+import './git';
