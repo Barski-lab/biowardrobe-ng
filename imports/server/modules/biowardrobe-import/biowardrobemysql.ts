@@ -11,7 +11,7 @@ import { createPool } from 'mysql';
 
 import { Log } from '../logger';
 import { Subscriber } from 'rxjs/Subscriber';
-
+import { of } from 'rxjs/observable/of';
 
 // export const experimentType = {
 //     1: 'DNA-Seq',
@@ -97,6 +97,17 @@ export class BioWardrobeMySQL {
      */
     public static getLaboratories(): Observable<any> {
         return BioWardrobeMySQL.mysqlQuery('SELECT id, name, description from laboratory');
+    }
+
+    public static getSettings(): Observable<any> {
+        return BioWardrobeMySQL.mysqlQuery('SELECT * FROM ems.settings')
+            .switchMap((settings) => {
+                let settingsMap = {};
+                for (let i = 0; i < settings[0].length; ++i) {
+                    settingsMap[settings[0][i]["key"]] = settings[0][i]["value"];
+                }
+                return of(settingsMap);
+            });
     }
 
     /**
