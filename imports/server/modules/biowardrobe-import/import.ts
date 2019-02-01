@@ -128,7 +128,6 @@ class BioWardrobe {
                             const uo: any = {
                                 name: l.name,
                                 description: l.description,
-                                modified: Date.now() / 1000.0,
                                 owner: {
                                     _id: user._id,
                                     lastName: user.profile.lastName,
@@ -137,7 +136,6 @@ class BioWardrobe {
                             };
                             return of(Labs.insert(uo));
                         } else {
-                            Log.debug('Add lab:', user, l.name);
                             return DDPConnection.call('satellite/accounts/createLab', user._id, l.name, l.description);
                         }
                     }
