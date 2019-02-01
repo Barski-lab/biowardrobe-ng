@@ -119,7 +119,6 @@ class BioWardrobe {
                             ]
                         });
                     if (!user) {
-                        Log.error('No owner for lab. Skip Lab', l.id);
                         return of(null);
                     }
 
@@ -254,7 +253,6 @@ class BioWardrobe {
         );
     }
 
-
     static getSamples() {
         return BioWardrobeMySQL.getSettings().pipe(
             switchMap((settings) => {
@@ -317,7 +315,11 @@ class BioWardrobe {
                             delete (expInput['control_file']);
                         }
                         experiment['inputs'] = expInput;
-                        experiment['outputs'] = JSON.parse(experiment['params']);
+
+                        let discardKey = "discard_this_key";
+                        let expParams = experiment['params'].replace(/http:\/\/commonwl\.org\/cwltool#generation|http:\\\/\\\/commonwl.org\\\/cwltool#generation/g, discardKey);
+                        experiment['outputs'] = cleanCwlOutputs(JSON.parse(expParams), discardKey);
+
                         const expProject = Projects.findOne({"biowardrobe_import.project_id": experiment.egroup_id});
                         const expLaboratory = Labs.findOne({"biowardrobe_import.laboratory_id": experiment.laboratory_id});
                         if (!expProject || !expLaboratory) {
@@ -415,6 +417,44 @@ class BioWardrobe {
     }
 }
 
+function cleanCwlOutputs(inputObj, excludeKey) {
+    let outputObj = {};
+
+    let returnUnchanged = Match.test(
+        inputObj,
+        Match.OneOf(
+            String,
+            [String],
+            Number,
+            [Number],
+            Boolean,
+            [Boolean],
+            Date,
+            [Date],
+            null
+        )
+    );
+
+    if (returnUnchanged) {
+        return inputObj;
+    }
+
+    for (let key of Object.keys(inputObj)) {
+        check(key, String);
+        if (key.indexOf(excludeKey) !== -1) {
+            continue;
+        }
+        if (Array.isArray(inputObj[key])) {
+            outputObj[key] = inputObj[key].map(item => cleanCwlOutputs(item, excludeKey));
+        } else if (typeof inputObj[key] === 'object') {
+            outputObj[key] = cleanCwlOutputs(inputObj[key], excludeKey);
+        } else {
+            check(inputObj[key], Match.OneOf(String, Number, Boolean, Date, null));
+            outputObj[key] = inputObj[key];
+        }
+    }
+    return outputObj;
+}
 
 function fetch_cwls(){
     const gitRepo = Meteor.settings['git'];
