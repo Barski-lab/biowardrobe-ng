@@ -16,6 +16,7 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
 
     // name field in _columns should be one level depth to allow use TdDataTableService
     private _columns: ITdDataTableColumn[] = [
+        { name: 'author',      label: 'Author',       filter: true},
         { name: 'alias',       label: 'Alias',       filter: true},
         { name: 'conditions',  label: 'Conditions',  filter: true},
         { name: 'cells',       label: 'Cells',       filter: true},
@@ -40,9 +41,12 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
 
     private _refactorSampleData(singleSampleData, cwlData){
         let dataFormated = singleSampleData.metadata || {};
+        dataFormated["author"] = singleSampleData["author"];
         dataFormated["created"] = singleSampleData.date? singleSampleData.date.created: "";
         dataFormated["_id"] = singleSampleData["_id"];
-        dataFormated["cwlLabel"] = cwlData.find(singleCwl => {return singleCwl["_id"] == singleSampleData.cwlId}); // .git.path;
+        let currentCWL = cwlData.find(singleCwl => {return singleCwl["_id"] == singleSampleData.cwlId});
+        dataFormated["cwlLabel"] = currentCWL.description.label;
+        dataFormated["description"] = currentCWL.description.doc;
         return dataFormated;
     }
 
