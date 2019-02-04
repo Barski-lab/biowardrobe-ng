@@ -170,17 +170,8 @@ class BioWardrobe {
                     const lab = Labs.findOne({"biowardrobe_import.laboratory_id": p.laboratory_id});
                     if (!project && lab) {
                         if (!Meteor.settings.rc_server) {
-                            const _attachCWL = CWLCollection.find({
-                                $and: [
-                                    {
-                                        "servicetags": {
-                                            "$regex": "Basic Analysis",
-                                            "$options": "i"
-                                        }
-                                    }
-                                ]
-                            }, {_id: 1}).fetch();
-                            const project_id = Projects.insert(
+                            const cwlIds = CWLCollection.find({}, {fields: {_id: 1}}).fetch();
+                            const projectId = Projects.insert(
                                 {
                                     "name": p['name'],
                                     "description": p['description'] || "",
@@ -192,9 +183,9 @@ class BioWardrobe {
                                         }
                                     ],
                                     "modified": Date.now() / 1000.0,
-                                    "cwl": _attachCWL
+                                    "cwl": cwlIds
                                 });
-                            return of(project_id);
+                            return of(projectId);
                         } else {
                             Log.error(`Add project: ${p.name} to the lab ${lab.name}`);
                             const description = p['description'] || "";
