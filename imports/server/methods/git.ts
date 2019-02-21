@@ -5,10 +5,11 @@ import { safeLoad } from 'js-yaml';
 
 import { Log } from '../modules/logger';
 import { CWLCollection } from '../../collections/shared';
+import { WorkflowFactory } from 'cwlts/models';
 
 const nodegit = require("nodegit");
 const path = require("path");
-
+const fs   = require('fs');
 
 export class WorkflowsGitFetcher {
 
@@ -74,13 +75,26 @@ export class WorkflowsGitFetcher {
             });
     }
 
+    static expandRun(workflowModel, basedir){
+        if (workflowModel.class == "Workflow") {
+            workflowModel.steps.map((step) => {
+                if (step.runPath){
+                    let absRunPath = path.join(basedir, step.runPath);
+                    step.setRunProcess(safeLoad(fs.readFileSync(absRunPath)));
+                    WorkflowsGitFetcher.expandRun(step.run, path.dirname(absRunPath))
+                }
+            });
+        }
+    }
+
     static parseWorkflow(workflowEntry, latestCommit, gitUrl, gitPath) {
 
-        const workflowData = Promise.await(workflowEntry.getBlob()).toString();
-        const workflowDataSerialized = safeLoad(workflowData);
+        const workflowRawData = Promise.await(workflowEntry.getBlob()).toString();
+        const workflowModel = WorkflowFactory.from(safeLoad(workflowRawData), "document");
         const workflowPath = workflowEntry.path();
-
         const sha = latestCommit.sha();
+
+        WorkflowsGitFetcher.expandRun(workflowModel, path.dirname(path.join(gitPath, workflowPath)));
 
         let spliceIndex;
         if (gitUrl.endsWith('.git')) {
@@ -104,12 +118,13 @@ export class WorkflowsGitFetcher {
             "description": {
                 "url": workflowURL,
                 "version": sha,
-                "label": workflowDataSerialized['label'] || "",
-                "doc": workflowDataSerialized['doc'] || ""
+                "label": workflowModel["label"] || "",
+                "doc": workflowModel["description"] || ""
             },
             "source": {
-                "source": workflowData,
-                "json": JSON.stringify(workflowDataSerialized)
+                "source": workflowRawData,
+                "json": JSON.stringify(safeLoad(workflowRawData)),                        // probably, we don't need it
+                "pack": JSON.stringify(workflowModel.serialize())
             }
         };
 
