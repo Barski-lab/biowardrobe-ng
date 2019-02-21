@@ -5,11 +5,10 @@ import { safeLoad } from 'js-yaml';
 
 import { Log } from '../modules/logger';
 import { CWLCollection } from '../../collections/shared';
-import { WorkflowFactory } from 'cwlts/models';
 
 const nodegit = require("nodegit");
 const path = require("path");
-const fs   = require('fs');
+const fs = require('fs');
 
 export class WorkflowsGitFetcher {
 
@@ -75,13 +74,13 @@ export class WorkflowsGitFetcher {
             });
     }
 
-    static expandRun(workflowModel, basedir){
-        if (workflowModel.class == "Workflow") {
-            workflowModel.steps.map((step) => {
-                if (step.runPath){
-                    let absRunPath = path.join(basedir, step.runPath);
-                    step.setRunProcess(safeLoad(fs.readFileSync(absRunPath)));
-                    WorkflowsGitFetcher.expandRun(step.run, path.dirname(absRunPath))
+    static expandRun(dataObj, basedir){
+        if (dataObj.class == "Workflow") {
+            Object.keys(dataObj.steps).forEach((key) => {
+                if (typeof dataObj.steps[key].run === "string"){
+                    let absRunPath = path.join(basedir, dataObj.steps[key].run);
+                    dataObj.steps[key].run = safeLoad(fs.readFileSync(absRunPath));
+                    WorkflowsGitFetcher.expandRun(dataObj.steps[key].run, path.dirname(absRunPath))
                 }
             });
         }
@@ -90,11 +89,13 @@ export class WorkflowsGitFetcher {
     static parseWorkflow(workflowEntry, latestCommit, gitUrl, gitPath) {
 
         const workflowRawData = Promise.await(workflowEntry.getBlob()).toString();
-        const workflowModel = WorkflowFactory.from(safeLoad(workflowRawData), "document");
+        const workflowSerializedData = safeLoad(workflowRawData);
         const workflowPath = workflowEntry.path();
         const sha = latestCommit.sha();
 
-        WorkflowsGitFetcher.expandRun(workflowModel, path.dirname(path.join(gitPath, workflowPath)));
+        WorkflowsGitFetcher.expandRun(workflowSerializedData, path.dirname(path.join(gitPath, workflowPath)));
+
+        // fs.writeFile(path.join("/temp", workflowPath), JSON.stringify(workflowSerializedData, null, 4));
 
         let spliceIndex;
         if (gitUrl.endsWith('.git')) {
@@ -118,13 +119,12 @@ export class WorkflowsGitFetcher {
             "description": {
                 "url": workflowURL,
                 "version": sha,
-                "label": workflowModel["label"] || "",
-                "doc": workflowModel["description"] || ""
+                "label": workflowSerializedData["label"] || "",
+                "doc": workflowSerializedData["doc"] || ""
             },
             "source": {
                 "source": workflowRawData,
-                "json": JSON.stringify(safeLoad(workflowRawData)),                        // probably, we don't need it
-                "pack": JSON.stringify(workflowModel.serialize())
+                "json": JSON.stringify(workflowSerializedData)
             }
         };
 
