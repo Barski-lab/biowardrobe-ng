@@ -74,15 +74,26 @@ export class WorkflowsGitFetcher {
             });
     }
 
-    static expandRun(dataObj, basedir){
-        if (dataObj.class == "Workflow") {
-            Object.keys(dataObj.steps).forEach((key) => {
-                if (typeof dataObj.steps[key].run === "string"){
-                    let absRunPath = path.join(basedir, dataObj.steps[key].run);
-                    dataObj.steps[key].run = safeLoad(fs.readFileSync(absRunPath));
-                    WorkflowsGitFetcher.expandRun(dataObj.steps[key].run, path.dirname(absRunPath))
+    static expandEmbedded(dataObj, basedir){
+        if (_.isObject(dataObj) && !_.isArray(dataObj)){
+            Object.keys(dataObj).forEach((key) => {
+                if (key === "run" && typeof dataObj[key] === "string"){
+                    let absRunPath = path.join(basedir, dataObj[key]);
+                    dataObj[key] = safeLoad(fs.readFileSync(absRunPath));
+                    WorkflowsGitFetcher.expandEmbedded(dataObj[key], path.dirname(absRunPath))
+                } else if (key === "$import" && typeof dataObj[key] === "string"){
+                    let absRunPath = path.join(basedir, dataObj[key]);
+                    Object.keys(dataObj).forEach(k => delete dataObj[k]);
+                    Object.assign(dataObj, safeLoad(fs.readFileSync(absRunPath)));
+                    WorkflowsGitFetcher.expandEmbedded(dataObj, path.dirname(absRunPath))
+                } else {
+                    WorkflowsGitFetcher.expandEmbedded(dataObj[key], basedir)
                 }
             });
+        } else if (_.isArray(dataObj)){
+            dataObj.forEach((item)=>{
+                WorkflowsGitFetcher.expandEmbedded(item, basedir)
+            })
         }
     }
 
@@ -93,7 +104,7 @@ export class WorkflowsGitFetcher {
         const workflowPath = workflowEntry.path();
         const sha = latestCommit.sha();
 
-        WorkflowsGitFetcher.expandRun(workflowSerializedData, path.dirname(path.join(gitPath, workflowPath)));
+        WorkflowsGitFetcher.expandEmbedded(workflowSerializedData, path.dirname(path.join(gitPath, workflowPath)));
 
         // fs.writeFile(path.join("/temp", workflowPath), JSON.stringify(workflowSerializedData, null, 4));
 
