@@ -133,7 +133,7 @@ export class BioWardrobeMySQL {
     public static getExperiments(): Observable<any> {
         return BioWardrobeMySQL.mysqlQuery(
             `
-            SELECT l.id, uid, name4browser,  egroup_id, deleted, groupping, cells, conditions, size,
+            SELECT l.id, uid, name4browser,  egroup_id, p.name as egroup_name, deleted, groupping, cells, conditions, size,
             dateadd, datedel, dateanalyzed, dateanalyzes, dateanalyzee, libstatus, libstatustxt, url,filename, filenameold,
             tagstotal, tagsmapped, tagssuppressed, tagsused, tagsribo, params,
             fragmentsize, fragmentsizeest, fragmentsizeexp, fragmentsizeforceuse, notes, protocol, islandcount,
@@ -155,6 +155,7 @@ export class BioWardrobeMySQL {
 
         from labdata l
         inner join (experimenttype e,genome g ) ON (e.id=experimenttype_id and g.id=genome_id)
+        LEFT JOIN (egroup p) ON (l.egroup_id=p.id)
         LEFT JOIN (antibody a) ON (l.antibody_id=a.id)
         LEFT JOIN (worker w) ON (l.worker_id=w.id)
 

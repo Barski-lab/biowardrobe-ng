@@ -21,10 +21,10 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
         { name: 'genome',      label: 'Genome',      filter: true},
         { name: 'conditions',  label: 'Conditions',  filter: true},
         { name: 'cells',       label: 'Cells',       filter: true},
-        { name: 'description', label: 'Description', filter: true},
-        { name: 'catalog',     label: 'Catalog',     filter: true},
+        { name: 'project',     label: 'Project',     filter: true},
         { name: 'created',     label: 'Created',     filter: true, format: fullDate => fullDate.toISOString().substr(0,10) },
-        { name: 'cwlLabel',    label: 'Pipeline',    filter: true}
+        { name: 'cwlLabel',    label: 'Pipeline',    filter: true},
+        { name: 'description', label: 'Pipeline Description', filter: true}
     ];
 
     onRowClick (payload){
