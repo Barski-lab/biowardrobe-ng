@@ -97,6 +97,22 @@ export class WorkflowsGitFetcher {
         }
     }
 
+    static exportWorkflow(directory, prefix, workflowSerializedData){
+        let base = path.join(directory, prefix);
+        let dagTemplate = `#!/usr/bin/env python3
+from cwl_airflow_parser.cwldag import CWLDAG
+from cwl_airflow_parser import CWLJobGatherer
+from biowardrobe_airflow_analysis.operators import BioWardrobeJobDispatcher, BioWardrobeJobFinalizing
+
+dag = CWLDAG(cwl_workflow="${base+".cwl"}")
+dag.create()
+dag.add(BioWardrobeJobDispatcher(dag=dag), to='top')
+dag.add(CWLJobGatherer(dag=dag), to='bottom')
+dag.add(BioWardrobeJobFinalizing(dag=dag), to='bottom')`;
+        fs.writeFile(base+".cwl", JSON.stringify(workflowSerializedData, null, 4), {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", err)});
+        fs.writeFile(base+".py", dagTemplate, {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", err)});
+    }
+
     static parseWorkflow(workflowEntry, latestCommit, gitUrl, gitPath) {
 
         const workflowRawData = Promise.await(workflowEntry.getBlob()).toString();
@@ -105,8 +121,6 @@ export class WorkflowsGitFetcher {
         const sha = latestCommit.sha();
 
         WorkflowsGitFetcher.expandEmbedded(workflowSerializedData, path.dirname(path.join(gitPath, workflowPath)));
-
-        // fs.writeFile(path.join("/temp", workflowPath), JSON.stringify(workflowSerializedData, null, 4));
 
         let spliceIndex;
         if (gitUrl.endsWith('.git')) {
@@ -152,6 +166,7 @@ export class WorkflowsGitFetcher {
         }
         CWLCollection.update({ _id: targetId }, { $set: cwlUpdated }, { upsert: true });
 
+        WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dagFolder"], path.basename(workflowPath)+"-"+sha, workflowSerializedData);
     }
 
 }
