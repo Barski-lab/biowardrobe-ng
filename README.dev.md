@@ -41,7 +41,7 @@
         ```
     - Try to clone repository from `git.url`
     - If clonning failed, open local repository from `git.path`
-    - Fetch changes from the remote `origin` (currently harcoded [here](https://github.com/Barski-lab/biowardrobe-ng/blob/6fa9ab80999ee5920d2c275e30827d07e3281307/imports/server/methods/git.ts#L170))
+    - Fetch changes from the remote `origin` (currently harcoded [here](https://github.com/Barski-lab/biowardrobe-ng/blob/6fa9ab80999ee5920d2c275e30827d07e3281307/imports/server/methods/git.ts#L17))
     - Merge fetched changes into `git.branch`
     - Get latest commit from `git.branch`
     - Get file list from `git.workflowsDir`
