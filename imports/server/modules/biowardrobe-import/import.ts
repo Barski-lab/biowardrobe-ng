@@ -324,7 +324,8 @@ class BioWardrobe {
                             "alias": experiment["name4browser"],
                             "notes": experiment["notes"] || "",
                             "protocol": experiment["protocol"] || "",
-                            "grouping": experiment["groupping"] || ""
+                            "grouping": experiment["groupping"] || "",
+                            "genome": experiment["genome"]
                         };
                         if (!experiment['etype'].includes('RNA')) {
                             expMetadata = {

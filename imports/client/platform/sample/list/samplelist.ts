@@ -18,6 +18,7 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
     private _columns: ITdDataTableColumn[] = [
         { name: 'author',      label: 'Author',       filter: true},
         { name: 'alias',       label: 'Alias',       filter: true},
+        { name: 'genome',      label: 'Genome',      filter: true},
         { name: 'conditions',  label: 'Conditions',  filter: true},
         { name: 'cells',       label: 'Cells',       filter: true},
         { name: 'description', label: 'Description', filter: true},
@@ -47,6 +48,7 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
         let currentCWL = cwlData.find(singleCwl => {return singleCwl["_id"] == singleSampleData.cwlId});
         dataFormated["cwlLabel"] = currentCWL.description.label;
         dataFormated["description"] = currentCWL.description.doc;
+
         return dataFormated;
     }
 
