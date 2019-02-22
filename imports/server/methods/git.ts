@@ -14,13 +14,16 @@ export class WorkflowsGitFetcher {
 
     static async getWorkflows(gitURL, gitPath, gitBranch="master", workflowsDir="/workflows") {
 
+        let defaultRemoteName = "origin";
+
         Log.debug("Load workflows from Git Repository:",
             "\n  URL:          ", gitURL,
             "\n  local path:   ", gitPath,
             "\n  branch:       ", gitBranch,
+            "\n  remote:       ", defaultRemoteName,
             "\n  workflows dir:", workflowsDir);
 
-
+        let repository: any;   // to keep git repo between the promises
         let latestCommit: any;
 
         let cloneOptions = {
@@ -38,14 +41,24 @@ export class WorkflowsGitFetcher {
             return nodegit.Repository.open(localPath);
         };
 
+        Log.debug("Clone workflows from ", gitURL);
         const workflows = await nodegit.Clone(gitURL, gitPath, cloneOptions)
             .catch((e) => {
                 Log.debug("Failed to clone workflows from", gitURL, e);
                 return cloneErrorHandler(gitPath)
             })
             .then((repo) => {
-                Log.debug("Switch to branch", gitBranch);
-                return repo.getBranchCommit(gitBranch);                    // What if branch doesn't exist?
+                Log.debug("Fetch changes from remote", defaultRemoteName);
+                repository = repo;
+                return repo.fetch(defaultRemoteName);
+            })
+            .then(()=>{
+                Log.debug("Merge fetched changes into", gitBranch);
+                return repository.mergeBranches(gitBranch, defaultRemoteName + "/" + gitBranch);
+            })
+            .then((commitId)=>{
+                Log.debug("Get latest commit", commitId);
+                return repository.getCommit(commitId);
             })
             .then((commit) => {
                 Log.debug("Get files tree from the latest commit");
