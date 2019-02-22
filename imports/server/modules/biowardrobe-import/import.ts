@@ -24,6 +24,7 @@ import { CWLCollection, Labs, Projects, Samples } from '../../../collections/sha
 import { Observable } from 'rxjs';
 
 const Mustache = require('mustache');
+const path = require("path");
 
 // delete Package.webapp.main;
 
@@ -333,12 +334,12 @@ class BioWardrobe {
                             };
                         }
                         experiment["metadata"] = expMetadata;
+
                         let cwlPath = "workflows/" + experiment["workflow"];
                         if (Meteor.settings['git'] && Meteor.settings['git']["workflowsDir"]){
-                            let workflowsDir =  Meteor.settings['git']["workflowsDir"];
-                            workflowsDir = workflowsDir.endsWith('/') ? workflowsDir.slice(0, -1) : workflowsDir;
-                            cwlPath = workflowsDir + "/" + experiment["workflow"];
+                            cwlPath = path.join(Meteor.settings['git']["workflowsDir"], experiment["workflow"]);
                         }
+
                         let expCwl = CWLCollection.findOne({"git.path": cwlPath});
                         if (!expCwl) {
                             return of(null);
