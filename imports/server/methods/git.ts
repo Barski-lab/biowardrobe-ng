@@ -99,16 +99,17 @@ export class WorkflowsGitFetcher {
 
     static exportWorkflow(directory, prefix, workflowSerializedData){
         let base = path.join(directory, prefix);
-        let dagTemplate = `#!/usr/bin/env python3
-from cwl_airflow_parser.cwldag import CWLDAG
-from cwl_airflow_parser import CWLJobGatherer
-from biowardrobe_airflow_analysis.operators import BioWardrobeJobDispatcher, BioWardrobeJobFinalizing
-
-dag = CWLDAG(cwl_workflow="${base+".cwl"}")
-dag.create()
-dag.add(BioWardrobeJobDispatcher(dag=dag), to='top')
-dag.add(CWLJobGatherer(dag=dag), to='bottom')
-dag.add(BioWardrobeJobFinalizing(dag=dag), to='bottom')`;
+        let dagTemplate = `
+#!/usr/bin/env python3
+from cwl_airflow_parser import CWLDAG, CWLJobDispatcher, CWLJobGatherer
+def cwl_workflow(workflow_file):
+    dag = CWLDAG(cwl_workflow=workflow_file)
+    dag.create()
+    dag.add(CWLJobDispatcher(dag=dag), to='top')
+    dag.add(CWLJobGatherer(dag=dag), to='bottom')
+    return dag
+dag = cwl_workflow("${base+".cwl"}")
+`;
         fs.writeFile(base+".cwl", JSON.stringify(workflowSerializedData, null, 4), {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", err)});
         fs.writeFile(base+".py", dagTemplate, {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", err)});
     }
