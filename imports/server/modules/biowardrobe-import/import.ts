@@ -158,6 +158,23 @@ class BioWardrobe {
             );
     }
 
+
+    /**
+     * Assign users to the existent laboratories
+     * @returns {Observable<number>}
+     */
+    static assingWorkersToLaboratories (){
+        Meteor.users.find().forEach(currentUser => {
+            if (currentUser.biowardrobe_import && currentUser.biowardrobe_import.laboratory_id){
+                const lab = Labs.findOne({"biowardrobe_import.laboratory_id": currentUser.biowardrobe_import.laboratory_id});
+                if (lab) {
+                    Meteor.users.update( {_id: currentUser._id }, {"$addToSet":{"laboratories":lab._id}});
+                }
+            }
+        });
+        return of(1);
+    }
+
     /**
      * Imports Project (former Folders) into local project mongo collection and syncs projects with remote server
      * (trough 'satellite/projects/createProject' call)
@@ -490,6 +507,7 @@ Meteor.startup(() => {
                 return of(
                     BioWardrobe.getWorkers(),
                     BioWardrobe.getLaboratories(),
+                    BioWardrobe.assingWorkersToLaboratories(),
                     BioWardrobe.getProjects(),
                     BioWardrobe.getProjectShares(),
                     BioWardrobe.getSamples()
