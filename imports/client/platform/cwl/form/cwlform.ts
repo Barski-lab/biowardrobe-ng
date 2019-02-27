@@ -115,10 +115,10 @@ export class BWCWLForm extends BWComponentBase {
         private _uploadService: BWUploadService
     ) {
         super();
-        this.tracked = this._uploadService.getFileStorageList()
-            .subscribe((data) => {
-                this.directories = _uploadService.makeDirectoriesFromFileList(data.files);
-            });
+        // this.tracked = this._uploadService.getFileStorageList()
+        //     .subscribe((data) => {
+        //         this.directories = _uploadService.makeDirectoriesFromFileList(data.files);
+        //     });
     }
 
 }
