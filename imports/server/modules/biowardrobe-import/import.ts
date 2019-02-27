@@ -176,6 +176,30 @@ class BioWardrobe {
     }
 
     /**
+     * As long as projects is the central part of the system (not laboratories like it was before),
+     * we need to specify which user has access to which project. Originally all the laboratory's members had
+     * access to all its projects. Therefore we need to iterate over all users; then check, if current user belongs to any
+     * of the laboratories; if yes, iterate over them and for every laboratory find projects associated with it;
+     * then add these projects to the current user.
+     */
+    static assingProjectsToWorkers (){
+        Meteor.users.find().forEach(currentUser => {
+            if (currentUser.laboratories){
+                currentUser.laboratories.forEach(laboratory => {
+                    let projectIds = Projects
+                        .find({"labs": {$elemMatch: {"_id": laboratory._id}}})
+                        .forEach(project => {
+                            Meteor.users.update( {_id: currentUser._id }, {"$addToSet":{"projects": project._id}});
+                        });
+
+                })
+            }
+        });
+        return of(1);
+    }
+
+
+    /**
      * Imports Project (former Folders) into local project mongo collection and syncs projects with remote server
      * (trough 'satellite/projects/createProject' call)
      */
@@ -507,9 +531,10 @@ Meteor.startup(() => {
                 return of(
                     BioWardrobe.getWorkers(),
                     BioWardrobe.getLaboratories(),
-                    BioWardrobe.assingWorkersToLaboratories(),
                     BioWardrobe.getProjects(),
                     BioWardrobe.getProjectShares(),
+                    BioWardrobe.assingWorkersToLaboratories(),
+                    BioWardrobe.assingProjectsToWorkers(),
                     BioWardrobe.getSamples()
                 ).pipe(concatAll())
             })
