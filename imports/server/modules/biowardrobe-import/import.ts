@@ -546,10 +546,10 @@ Meteor.startup(() => {
                     BioWardrobe.getLaboratories(),
                     BioWardrobe.getProjects(),
                     BioWardrobe.getProjectShares(),
-                    BioWardrobe.assignWorkersToLaboratories(),
-                    BioWardrobe.assignProjectsToWorkers(),
+                    // BioWardrobe.assignWorkersToLaboratories(),
+                    // BioWardrobe.assignProjectsToWorkers(),
                     BioWardrobe.getSamples(),
-                    BioWardrobe.assignSamplesToProjects()
+                    // BioWardrobe.assignSamplesToProjects()
                 ).pipe(concatAll())
             })
             ).subscribe((c) => {
