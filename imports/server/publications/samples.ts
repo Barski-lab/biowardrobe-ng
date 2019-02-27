@@ -1,7 +1,7 @@
 import { Meteor } from 'meteor/meteor';
 
 import { Log } from '../modules/logger';
-import { Samples } from '../../collections/shared';
+import { Samples, Projects } from '../../collections/shared';
 
 
 const samplesPublishFields = {
@@ -11,13 +11,23 @@ const samplesPublishFields = {
 };
 
 Meteor.publish('samples/get', function (param) {
+    let selectedSamples = [];
     if (this.userId) {
-        //TODO: check rights, if user has permissions for this sample
-
-
-
-
-        return Samples.find(param, samplesPublishFields);
+        let currentUser = Meteor.users.findOne({_id: this.userId});
+        if (currentUser.projects){
+            Projects.find({_id: {$in: currentUser.projects}}).forEach(project => {
+                if(project.samples){
+                    project.samples.forEach(sampleId => {
+                            if (selectedSamples.indexOf(sampleId) === -1) {
+                                selectedSamples.push(sampleId)
+                            }
+                        }
+                    )
+                }
+            });
+        }
+        Log.debug("Selected sample Ids", selectedSamples);
+        return Samples.find({_id: {$in: selectedSamples} }, samplesPublishFields);
     } else {
         this.ready();
     }
