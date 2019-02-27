@@ -163,7 +163,7 @@ class BioWardrobe {
      * Assign users to the existent laboratories
      * @returns {Observable<number>}
      */
-    static assingWorkersToLaboratories (){
+    static assignWorkersToLaboratories (){
         Meteor.users.find().forEach(currentUser => {
             if (currentUser.biowardrobe_import && currentUser.biowardrobe_import.laboratory_id){
                 const lab = Labs.findOne({"biowardrobe_import.laboratory_id": currentUser.biowardrobe_import.laboratory_id});
@@ -182,7 +182,7 @@ class BioWardrobe {
      * of the laboratories; if yes, iterate over them and for every laboratory find projects associated with it;
      * then add these projects to the current user.
      */
-    static assingProjectsToWorkers (){
+    static assignProjectsToWorkers() {
         Meteor.users.find().forEach(currentUser => {
             if (currentUser.laboratories){
                 currentUser.laboratories.forEach(laboratory => {
@@ -193,6 +193,19 @@ class BioWardrobe {
                         });
 
                 })
+            }
+        });
+        return of(1);
+    }
+
+    /**
+     * For every sample imported from BioWardrobe DB we have the projectId it belongs too.
+     * Update Projects with the list of sample ids
+     */
+    static assignSamplesToProjects() {
+        Samples.find().forEach(sample => {
+            if (sample.projectId){
+                Projects.update({_id: sample.projectId}, {"$addToSet":{"samples": sample._id}});
             }
         });
         return of(1);
@@ -533,9 +546,10 @@ Meteor.startup(() => {
                     BioWardrobe.getLaboratories(),
                     BioWardrobe.getProjects(),
                     BioWardrobe.getProjectShares(),
-                    BioWardrobe.assingWorkersToLaboratories(),
-                    BioWardrobe.assingProjectsToWorkers(),
-                    BioWardrobe.getSamples()
+                    BioWardrobe.assignWorkersToLaboratories(),
+                    BioWardrobe.assignProjectsToWorkers(),
+                    BioWardrobe.getSamples(),
+                    BioWardrobe.assignSamplesToProjects()
                 ).pipe(concatAll())
             })
             ).subscribe((c) => {
