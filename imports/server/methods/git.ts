@@ -115,16 +115,13 @@ export class WorkflowsGitFetcher {
         let dagTemplate = `
 #!/usr/bin/env python3
 from cwl_airflow_parser import CWLDAG, CWLJobDispatcher, CWLJobGatherer
-def cwl_workflow(workflow_file):
-    dag = CWLDAG(cwl_workflow=workflow_file)
-    dag.create()
-    dag.add(CWLJobDispatcher(dag=dag), to='top')
-    dag.add(CWLJobGatherer(dag=dag), to='bottom')
-    return dag
-dag = cwl_workflow("${base+".cwl"}")
+dag = CWLDAG(cwl_workflow="${base+".cwl"}", dag_id="${prefix}")
+dag.create()
+dag.add(CWLJobDispatcher(dag=dag), to='top')
+dag.add(CWLJobGatherer(dag=dag), to='bottom')
 `;
-        fs.writeFile(base+".cwl", JSON.stringify(workflowSerializedData, null, 4), {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", err)});
-        fs.writeFile(base+".py", dagTemplate, {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", err)});
+        fs.writeFile(base+".cwl", JSON.stringify(workflowSerializedData, null, 4), {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", base+".cwl")});
+        fs.writeFile(base+".py", dagTemplate, {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", base+".py")});
     }
 
     static parseWorkflow(workflowEntry, latestCommit, gitUrl, gitPath) {
@@ -180,7 +177,7 @@ dag = cwl_workflow("${base+".cwl"}")
         }
         CWLCollection.update({ _id: targetId }, { $set: cwlUpdated }, { upsert: true });
 
-        WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dagFolder"], path.basename(workflowPath)+"-"+sha, workflowSerializedData);
+        WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dagFolder"], path.basename(workflowPath).replace(".cwl", "").replace(".", "_dot_")+"-"+sha, workflowSerializedData);
     }
 
 }
