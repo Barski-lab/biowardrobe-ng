@@ -31,6 +31,10 @@ export class BWSampleList extends BWComponentBase implements AfterViewInit {
         this._router.navigate(['/platform/sample', {sample_id: payload.row._id}]);
     }
 
+    onAddClick (payload){
+        this._router.navigate(['/platform/sample', {sample_id: "new"}]);
+    }
+
     constructor(
         private _sample: BWSampleService,
         private _zone: NgZone,

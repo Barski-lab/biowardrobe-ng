@@ -21,8 +21,10 @@ import { BWComponentBase } from '../../lib'
             </span>
                 <td-search-box #searchBox backIcon="arrow_back" class="push-right-sm" placeholder="Search here" (searchDebounce)="onSearch($event)" flex>
                 </td-search-box>
+                <button mat-icon-button (click)="onAdd($event)">
+                    <mat-icon>add</mat-icon>
+                </button>
             </div>
-
             <mat-divider></mat-divider>
 
             <mat-card-content>
@@ -88,11 +90,16 @@ export class BWTable extends BWComponentBase implements OnInit{
 
 
     @Output() rowClick: EventEmitter<any> = new EventEmitter();
+    @Output() addClick: EventEmitter<any> = new EventEmitter();
 
 
     onSearch (payload){
         this.searchTerm = payload;
         this.filter();
+    }
+
+    onAdd(payload){
+        this.addClick.emit(payload);
     }
 
     onSortChange (payload){
