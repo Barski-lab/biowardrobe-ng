@@ -110,6 +110,38 @@ export class WorkflowsGitFetcher {
         }
     }
 
+
+    static removeMetadata(dataObj, excludeKeys=["$namespaces", "$schemas", "doc"]){
+        if (_.isObject(dataObj) && !_.isArray(dataObj)){
+            Object.keys(dataObj).forEach((key) => {
+                if (key === "$namespaces"
+                    && _.isObject(dataObj[key]) && !_.isArray(dataObj[key])
+                    && Object.keys(dataObj[key]).length > 0){
+
+                    Object.keys(dataObj[key]).forEach((namespace)=>{
+                        if (!excludeKeys.includes(namespace+":"))
+                            excludeKeys.push(namespace+":");
+                    });
+                    delete dataObj[key];
+
+                } else {
+
+                    excludeKeys.forEach((itemPrefixToExclude) => {
+                        if (key.startsWith(itemPrefixToExclude))
+                            delete dataObj[key];
+                    });
+
+                }
+                WorkflowsGitFetcher.removeMetadata(dataObj[key], excludeKeys);
+            });
+        } else if (_.isArray(dataObj)){
+            dataObj.forEach((item)=>{
+                WorkflowsGitFetcher.removeMetadata(item, excludeKeys);
+            })
+        }
+    }
+
+
     static exportWorkflow(directory, prefix, workflowSerializedData){
         let base = path.join(directory, prefix);
         let dagTemplate = `
@@ -132,6 +164,7 @@ dag.add(CWLJobGatherer(dag=dag), to='bottom')
         const sha = latestCommit.sha();
 
         WorkflowsGitFetcher.expandEmbedded(workflowSerializedData, path.dirname(path.join(gitPath, workflowPath)));
+        WorkflowsGitFetcher.removeMetadata(workflowSerializedData);
 
         let spliceIndex;
         if (gitUrl.endsWith('.git')) {
