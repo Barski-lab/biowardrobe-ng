@@ -298,168 +298,211 @@ class BioWardrobe {
     }
 
     static getSamples() {
-        return BioWardrobeMySQL.getSettings().pipe(
-            switchMap((settings) => {
-                return BioWardrobeMySQL.getExperiments().pipe(
+        return BioWardrobeMySQL.getExperiments().pipe(
 
-                    switchMap((experimentList) => of(...experimentList[0])),
+            switchMap((experimentList) => of(...experimentList[0])),
 
-                    mergeMap((experiment) => {
-                        if (Samples.findOne({'biowardrobe_import.exp_uid': experiment.uid})) {
-                            return of(null)
+            mergeMap((experiment) => {
+                if (Samples.findOne({'biowardrobe_import.exp_uid': experiment.uid})) {
+                    return of(null)
+                }
+
+                const _settings = {
+                    'advanced': '/ANL-DATA',
+                    'airflowdb': 'airflow',
+                    'bin': '/bin',
+                    'experimentsdb': 'experiments',
+                    'genomebrowserroot': '',
+                    'indices': '/indices',
+                    'maxthreads': '6',
+                    'preliminary': '/RAW-DATA',
+                    'temp': '/tmp',
+                    'upload': '/upload',
+                    'wardrobe': '/wardrobe',
+                    'wardroberoot': '/ems'
+                };
+
+                const BOWTIE_INDICES = "bowtie";
+                const STAR_INDICES = "STAR";
+                const ANNOTATIONS = "annotations";
+                const CHR_LENGTH_GENERIC_TSV = "chrNameLength.txt";
+                const ANNOTATION_GENERIC_TSV = "refgene.tsv";
+
+                experiment = {
+                    ...experiment,
+                    "pair": experiment['etype'].includes('pair'),
+                    "dUTP": experiment['etype'].includes('dUTP'),
+                    "forcerun": experiment['forcerun'] === 1,
+                    "spike": experiment['genome'].includes('spike'),
+                    "force_fragment_size": experiment['force_fragment_size'] === 1,
+                    "broad_peak": experiment['broad_peak'] === 2,
+                    "remove_duplicates": experiment['remove_duplicates'] === 1,
+                    "params": experiment['params'] || '{}',
+                    "raw_data": [_settings['wardrobe'], _settings['preliminary']].join('/').replace(/\/\//g, '/'),
+                    "upload": [_settings['wardrobe'], _settings['upload']].join('/').replace(/\/\//g, '/'),
+                    "indices": [_settings['wardrobe'], _settings['indices']].join('/').replace(/\/\//g, '/'),
+                    "threads": _settings['maxthreads'],
+                    "experimentsdb": _settings['experimentsdb'],
+                };
+                experiment = {
+                    ...experiment,
+                    "fastq_file_upstream": ['file:/', experiment["raw_data"], experiment["uid"], experiment["uid"] + '.fastq.bz2'].join('/'),
+                    "fastq_file_downstream": ['file:/', experiment["raw_data"], experiment["uid"], experiment["uid"] + '_2.fastq.bz2'].join('/'),
+                    "star_indices_folder": ['file:/', experiment["indices"], STAR_INDICES, experiment["findex"]].join('/'),
+                    "bowtie_indices_folder": ['file:/', experiment["indices"], BOWTIE_INDICES, experiment["findex"]].join('/'),
+                    "bowtie_indices_folder_ribo": ['file:/', experiment["indices"], BOWTIE_INDICES, experiment["findex"] + "_ribo"].join('/'),
+                    "chrom_length": ['file:/', experiment["indices"], BOWTIE_INDICES, experiment["findex"], CHR_LENGTH_GENERIC_TSV].join('/'),
+                    "annotation_input_file": ['file:/', experiment["indices"], ANNOTATIONS, experiment["findex"], ANNOTATION_GENERIC_TSV].join('/'),
+                    "exclude_chr": experiment['spike'] ? "control" : "",
+                    "output_folder": [experiment["raw_data"], experiment["uid"]].join('/'),
+                    "control_file": experiment['control_id'] ? [experiment["raw_data"], experiment["control_id"], experiment["control_id"] + '.bam'].join('/') : ""
+                };
+                let expInput = JSON.parse(
+                    Mustache.render(
+                        experiment['template'].replace(/{{/g, '<<').replace(/}}/g, '>>').replace(/{/g, '{{{').replace(/}/g, '}}}'),
+                        experiment).replace(/<</g, '{').replace(/>>/g, '}'),
+                    (key, value) => {
+                        if (value === "false") {
+                            return false;
                         }
-                        const BOWTIE_INDICES = "bowtie";
-                        const STAR_INDICES = "STAR";
-                        const ANNOTATIONS = "annotations";
-                        const CHR_LENGTH_GENERIC_TSV = "chrNameLength.txt";
-                        const ANNOTATION_GENERIC_TSV = "refgene.tsv";
-                        experiment = {
-                            ...experiment,
-                            "pair": experiment['etype'].includes('pair'),
-                            "dUTP": experiment['etype'].includes('dUTP'),
-                            "forcerun": experiment['forcerun'] === 1,
-                            "spike": experiment['genome'].includes('spike'),
-                            "force_fragment_size": experiment['force_fragment_size'] === 1,
-                            "broad_peak": experiment['broad_peak'] === 2,
-                            "remove_duplicates": experiment['remove_duplicates'] === 1,
-                            "params": experiment['params'] || '{}',
-                            "raw_data": [settings['wardrobe'], settings['preliminary']].join('/').replace(/\/\//g, '/'),
-                            "upload": [settings['wardrobe'], settings['upload']].join('/').replace(/\/\//g, '/'),
-                            "indices": [settings['wardrobe'], settings['indices']].join('/').replace(/\/\//g, '/'),
-                            "threads": settings['maxthreads'],
-                            "experimentsdb": settings['experimentsdb'],
-                        };
-                        experiment = {
-                            ...experiment,
-                            "fastq_file_upstream": ['file:/', experiment["raw_data"], experiment["uid"], experiment["uid"] + '.fastq.bz2'].join('/'),
-                            "fastq_file_downstream": ['file:/', experiment["raw_data"], experiment["uid"], experiment["uid"] + '_2.fastq.bz2'].join('/'),
-                            "star_indices_folder": ['file:/', experiment["indices"], STAR_INDICES, experiment["findex"]].join('/'),
-                            "bowtie_indices_folder": ['file:/', experiment["indices"], BOWTIE_INDICES, experiment["findex"]].join('/'),
-                            "bowtie_indices_folder_ribo": ['file:/', experiment["indices"], BOWTIE_INDICES, experiment["findex"] + "_ribo"].join('/'),
-                            "chrom_length": ['file:/', experiment["indices"], BOWTIE_INDICES, experiment["findex"], CHR_LENGTH_GENERIC_TSV].join('/'),
-                            "annotation_input_file": ['file:/', experiment["indices"], ANNOTATIONS, experiment["findex"], ANNOTATION_GENERIC_TSV].join('/'),
-                            "exclude_chr": experiment['spike'] ? "control" : "",
-                            "output_folder": [experiment["raw_data"], experiment["uid"]].join('/'),
-                            "control_file": experiment['control_id'] ? [experiment["raw_data"], experiment["control_id"], experiment["control_id"] + '.bam'].join('/') : ""
-                        };
-                        let expInput = JSON.parse(
-                            Mustache.render(
-                                experiment['template'].replace(/{{/g, '<<').replace(/}}/g, '>>').replace(/{/g, '{{{').replace(/}/g, '}}}'),
-                                experiment).replace(/<</g, '{').replace(/>>/g, '}'),
-                            (key, value) => {
-                                if (value === "false") {
-                                    return false;
-                                }
-                                if (value === "true") {
-                                    return true;
-                                }
-                                return value;
-                            });
-                        if (!experiment['control_file']) {
-                            delete (expInput['control_file']);
+                        if (value === "true") {
+                            return true;
                         }
-                        experiment['inputs'] = expInput;
+                        return value;
+                    });
+                if (!experiment['control_file']) {
+                    delete (expInput['control_file']);
+                }
+                experiment['inputs'] = expInput;
 
-                        let discardKey = "discard_this_key";
-                        let expParams = experiment['params'].replace(/http:\/\/commonwl\.org\/cwltool#generation|http:\\\/\\\/commonwl.org\\\/cwltool#generation/g, discardKey);
-                        experiment['outputs'] = cleanCwlOutputs(JSON.parse(expParams), discardKey);
+                let discardKey = "discard_this_key";
+                let expParams = experiment['params'].replace(/http:\/\/commonwl\.org\/cwltool#generation|http:\\\/\\\/commonwl.org\\\/cwltool#generation/g, discardKey);
+                experiment['outputs'] = cleanCwlOutputs(JSON.parse(expParams), discardKey);
 
-                        const expProject = Projects.findOne({"biowardrobe_import.project_id": experiment.egroup_id});
-                        const expLaboratory = Labs.findOne({"biowardrobe_import.laboratory_id": experiment.laboratory_id});
-                        if (!expProject || !expLaboratory) {
-                            excluded_laboratories[experiment.laboratory_id] = 1;
-                            return of(null);
+                const expProject = Projects.findOne({"biowardrobe_import.project_id": experiment.egroup_id});
+                const expLaboratory = Labs.findOne({"biowardrobe_import.laboratory_id": experiment.laboratory_id});
+                if (!expProject || !expLaboratory) {
+                    excluded_laboratories[experiment.laboratory_id] = 1;
+                    return of(null);
+                }
+                experiment['project'] = expProject;
+                experiment['laboratory'] = expLaboratory;
+
+                experiment["metadata"] = {
+                    "cells": experiment["cells"],
+                    "conditions": experiment["conditions"],
+                    "alias": experiment["name4browser"],
+                    "notes": experiment["notes"] || "",
+                    "protocol": experiment["protocol"] || "",
+                    "grouping": experiment["groupping"] || ""
+                };
+
+                let cwlPath = "workflows/" + experiment["workflow"];
+                if (Meteor.settings['git'] && Meteor.settings['git']["workflowsDir"]){
+                    cwlPath = path.join(Meteor.settings['git']["workflowsDir"], experiment["workflow"]);
+                }
+                experiment["cwl"] = CWLCollection.findOne({"git.path": cwlPath});
+                if (!experiment["cwl"]) {
+                    return of(null);
+                }
+
+
+
+                // Add updstream
+                const _upstream_data = Samples.findOne(
+                    {
+                        $and: [
+                            { "projectId": "Mrx3c92PKkipTBMsA" }, // Default project for all precomputed data
+                            // { "cwlId": _upstream_id },
+                            { "inputs.genome": experiment['db'] }
+                        ]
+                    } as any);
+                experiment['upstreams'] = { 'genome_indices': _upstream_data };
+
+                if (experiment['etype'].includes('RNA')) {
+
+                    experiment['pie'] = {
+                        colors: ['#b3de69', '#99c0db', '#fb8072', '#fdc381'],
+                        data: [
+                            ['Transcriptome', experiment['tagsused']],
+                            ['Multi-mapped', experiment['tagssuppressed']],
+                            ['Unmapped', experiment['tagstotal'] - experiment['tagsmapped'] - experiment['tagssuppressed']],
+                            ['Outside annotation', experiment['tagsmapped'] - experiment['tagsused']]
+                        ]
+                    };
+
+                } else {
+
+                    experiment["metadata"] = {
+                        ...experiment["metadata"],
+                        "antibody": (experiment["antibody"] || "").trim(),
+                        "catalog": (experiment["antibodycode"] || "").trim()
+                    };
+
+                    experiment['pie'] = {
+                        colors: ['#b3de69', '#99c0db', '#fb8072', '#fdc381'],
+                        data: [
+                            ['Mapped', experiment['tagsused']],
+                            ['Multi-mapped', experiment['tagssuppressed']],
+                            ['Unmapped', experiment['tagstotal'] - experiment['tagsmapped'] - experiment['tagssuppressed']],
+                            ['Duplicates', experiment['tagsmapped'] - experiment['tagsused']]
+                        ]
+                    };
+                }
+
+
+                const expUser = Meteor.users.findOne({'emails.address': experiment['email'].toLowerCase()});
+                if (expUser) {
+                    experiment['author'] = `${expUser.profile.lastName}, ${expUser.profile.firstName}`;
+                    experiment['userId'] = expUser._id;
+                } else {
+                    experiment['author'] = `${experiment['laboratory'].owner.lastName}, ${experiment['laboratory'].owner.firstName}`;
+                    experiment['userId'] = experiment['laboratory'].owner._id;
+                }
+                return of(experiment);
+            }),
+
+            filter(_ => !!_),
+
+            mergeMap((experiment) => {
+                let sample = {
+                    "userId": experiment['userId'],
+                    "author": experiment['author'],
+                    "cwlId": experiment['cwl']._id,
+                    "projectId": experiment['project']._id,
+                    "date": {
+                        "created": new Date(experiment['dateadd']),
+                        "analyzed": new Date(experiment['dateanalyzed']),
+                        "analyse_start": new Date(experiment['dateanalyzes']),
+                        "analyse_end": new Date(experiment['dateanalyzee']),
+                    },
+                    "metadata": experiment['metadata'],
+                    "inputs": experiment['inputs'],
+                    "outputs": experiment['outputs']
+                };
+                if (!Meteor.settings.rc_server) {
+                    return of(Samples.insert(sample));
+                } else {
+                    return DDPConnection.call('satellite/projects/createSample', sample);
+                }
+            }, (experiment, sampleId, outerIndex, innerIndex) => ({sampleId, experiment})),
+
+            reduce((acc, val) => {
+                Samples.update({_id: val.sampleId}, {
+                    $set: {
+                        biowardrobe_import: {
+                            exp_id: val.experiment.id,
+                            exp_uid: val.experiment.uid,
+                            egroup_id: val.experiment.egroup_id,
+                            synchronized: !!Meteor.settings.rc_server
                         }
-                        experiment['project'] = expProject;
-                        experiment['laboratory'] = expLaboratory;
-                        let expMetadata = {
-                            "cells": experiment["cells"],
-                            "conditions": experiment["conditions"],
-                            "alias": experiment["name4browser"],
-                            "notes": experiment["notes"] || "",
-                            "protocol": experiment["protocol"] || "",
-                            "grouping": experiment["groupping"] || "",
-                            "genome": experiment["genome"],
-                            "project": experiment["egroup_name"]
-                        };
-                        if (!experiment['etype'].includes('RNA')) {
-                            expMetadata = {
-                                ...expMetadata,
-                                "antibody": (experiment["antibody"] || "").trim(),
-                                "catalog": (experiment["antibodycode"] || "").trim()
-                            };
-                        }
-                        experiment["metadata"] = expMetadata;
+                    }
+                }, {upsert: true});
+                return {count: acc['count'] + 1, message: 'Samples finished'} as any;
+            }, {count: 0, message: 'Samples finished'} as any),
 
-                        let cwlPath = "workflows/" + experiment["workflow"];
-                        if (Meteor.settings['git'] && Meteor.settings['git']["workflowsDir"]){
-                            cwlPath = path.join(Meteor.settings['git']["workflowsDir"], experiment["workflow"]);
-                        }
-
-                        let expCwl = CWLCollection.findOne({"git.path": cwlPath});
-                        if (!expCwl) {
-                            return of(null);
-                        }
-                        experiment['cwl'] = expCwl;
-                        const expUser = Meteor.users.findOne({
-                            $and: [
-                                { 'emails.address': experiment['email'].toLowerCase() },
-                                { "biowardrobe_import.laboratory_id": experiment['laboratory']['biowardrobe_import']['laboratory_id'] }
-                            ]
-                        });
-                        if (expUser) {
-                            experiment['author'] = `${expUser.profile.lastName}, ${expUser.profile.firstName}`;
-                            experiment['userId'] = expUser._id;
-                        } else {
-                            experiment['author'] = `${experiment['laboratory'].owner.lastName}, ${experiment['laboratory'].owner.firstName}`;
-                            experiment['userId'] = experiment['laboratory'].owner._id;
-                        }
-                        return of(experiment);
-                    }),
-
-                    filter(_ => !!_),
-
-                    mergeMap((experiment) => {
-                        let sample = {
-                            "userId": experiment['userId'],
-                            "author": experiment['author'],
-                            "cwlId": experiment['cwl']._id,
-                            "projectId": experiment['project']._id,
-                            "date": {
-                                "created": new Date(experiment['dateadd']),
-                                "analyzed": new Date(experiment['dateanalyzed']),
-                                "analyse_start": new Date(experiment['dateanalyzes']),
-                                "analyse_end": new Date(experiment['dateanalyzee']),
-                            },
-                            "metadata": experiment['metadata'],
-                            "inputs": experiment['inputs'],
-                            "outputs": experiment['outputs']
-                        };
-                        if (!Meteor.settings.rc_server) {
-                            return of(Samples.insert(sample));
-                        } else {
-                            return DDPConnection.call('satellite/projects/createSample', sample);
-                        }
-                    }, (experiment, sampleId, outerIndex, innerIndex) => ({sampleId, experiment})),
-
-                    reduce((acc, val) => {
-                        Samples.update({_id: val.sampleId}, {
-                            $set: {
-                                biowardrobe_import: {
-                                    exp_id: val.experiment.id,
-                                    exp_uid: val.experiment.uid,
-                                    egroup_id: val.experiment.egroup_id,
-                                    synchronized: !!Meteor.settings.rc_server
-                                }
-                            }
-                        }, {upsert: true});
-                        return {count: acc['count'] + 1, message: 'Samples finished'} as any;
-                    }, {count: 0, message: 'Samples finished'} as any),
-
-                    catchError((e) => of({error: true, message: `Samples import: ${e}`}))
-                );
-            })
-        )
+            catchError((e) => of({error: true, message: `Samples import: ${e}`}))
+        );
     }
 }
 
