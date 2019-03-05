@@ -466,7 +466,7 @@ class BioWardrobe {
                 (biowardrobeRecord, sample, outerIndex, innerIndex) => ({ sample, biowardrobeRecord })),
             filter((e) => {
                 const exp = e.sample;
-                return exp && exp['cwl'] && exp['cwl']._id && exp['project']._id && exp['params'] && exp['params']['bambai_pair']; // && exp['etype'].includes('RNA')
+                return exp && exp['cwl'] && exp['cwl']._id && exp['project']._id && exp['outputs'] && exp['outputs']['bambai_pair']; // && exp['etype'].includes('RNA')
             }),
             mergeMap((e) => {
                 const experiment = e.sample;
