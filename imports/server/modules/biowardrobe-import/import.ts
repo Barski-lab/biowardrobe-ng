@@ -21,6 +21,7 @@ import {
 
 import { Log } from '../logger';
 import { CWLCollection, Labs, Projects, Samples } from '../../../collections/shared';
+import { FilesUpload } from '../../methods/filesupload';
 import { Observable } from 'rxjs';
 
 const Mustache = require('mustache');
@@ -510,13 +511,46 @@ class BioWardrobe {
                 Samples.update({ _id: val.sampleId }, {
                     $set: {
                         biowardrobe_import: {
-                            exp_id: val.experiment.id,
-                            exp_uid: val.experiment.uid,
-                            egroup_id: val.experiment.egroup_id,
+                            exp_id: val.experiment.sample.id,
+                            exp_uid: val.experiment.sample.uid,
+                            egroup_id: val.experiment.sample.egroup_id,
                             synchronized: !!Meteor.settings.rc_server
                         }
                     }
                 }, {upsert: true});
+
+                let getOpts = (sample, sampleId, fileName?) => {
+                    let meta = {
+                        projectId: sample['project']._id,
+                        sampleId: sampleId,
+                        userId: sample['userId'],
+                        isOutput: true
+                    };
+                    return {meta, fileName, userId: sampleId, fileId: Random.id()};        // Should be userId: experiment['userId']
+                };
+
+                const results = val.experiment.sample['outputs'];
+
+                for ( const output_key in results ) {
+                    if (results[output_key] && results[output_key].class === 'File' ) {
+
+                        let opts = getOpts(val.experiment.sample, val.sampleId, `${output_key}${results[output_key].nameext}`);
+                        FilesUpload.addFile(results[output_key].location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
+
+                        if (results[output_key].secondaryFiles) {
+                            results[output_key].secondaryFiles.forEach( (sf, index) => {
+                                let opts = getOpts(val.experiment.sample, `${output_key}_${index}${sf.nameext}`);
+                                FilesUpload.addFile(sf.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
+                            })
+                        }
+                    } else if (results[output_key] && results[output_key].class === 'Directory') {
+
+                    }
+                }
+
+
+
+
                 return {count: acc['count'] + 1, message: 'Samples finished'} as any;
             }, {count: 0, message: 'Samples finished'} as any),
             catchError((e) => of({error: true, message: `Samples import: ${e}`}))
