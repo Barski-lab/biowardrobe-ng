@@ -526,7 +526,7 @@ class BioWardrobe {
                         userId: sample['userId'],
                         isOutput: true
                     };
-                    return {meta, fileName, userId: sampleId, fileId: Random.id()};        // Should be userId: experiment['userId']
+                    return {meta, fileName, userId: sample['userId'], fileId: Random.id()};
                 };
 
                 const results = val.experiment.sample['outputs'];
@@ -539,7 +539,7 @@ class BioWardrobe {
 
                         if (results[output_key].secondaryFiles) {
                             results[output_key].secondaryFiles.forEach( (sf, index) => {
-                                let opts = getOpts(val.experiment.sample, `${output_key}_${index}${sf.nameext}`);
+                                let opts = getOpts(val.experiment.sample, val.sampleId, `${output_key}_${index}${sf.nameext}`);
                                 FilesUpload.addFile(sf.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
                             })
                         }
@@ -547,9 +547,6 @@ class BioWardrobe {
 
                     }
                 }
-
-
-
 
                 return {count: acc['count'] + 1, message: 'Samples finished'} as any;
             }, {count: 0, message: 'Samples finished'} as any),
