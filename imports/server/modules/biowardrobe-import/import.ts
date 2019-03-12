@@ -417,13 +417,16 @@ class BioWardrobe {
 
     static getInvoices() {
 
+        if (!Meteor.settings["billing"]){
+            Log.debug("Skip invoice generation. Billing information is absent in the settings file");
+            return of(1);
+        }
+
         let _now = new Date(2016, 11, 16); // new Date(); new Date(2016,5,16);
 
         let startDate = new Date(_now.getFullYear(), _now.getMonth() - 1, 1, 0, 0, 0);
         let endDate = new Date(_now.getFullYear(), _now.getMonth(), 0, 23, 59, 59);
         let yearAgo = new Date(startDate.getFullYear() - 1, startDate.getMonth(), 0, 23, 59, 59);
-
-        let dayx = new Date(2016, 3, 1); //Month goes from 0 !!!
 
         let inumber = 1;
         let pad = "0000000";
@@ -474,12 +477,10 @@ class BioWardrobe {
 
             lab_invoice['number'] = inumbers;
             lab_invoice['to'] = { lab: l, billing: _tobil };
-
-            // lab_invoice['from'] = { billing: company['billing'], info: _.omit(company['public'],["web","description"])};
+            lab_invoice['from'] = {billing: Meteor.settings["billing"]};
 
             lab_invoice['invoice'] = [];
             lab_invoice['paid'] = false;
-            lab_invoice['status'] = {'paid':false };
             lab_invoice['total'] = {
                 transactions: 0,
                 newtransactions: 0,
@@ -515,15 +516,9 @@ class BioWardrobe {
                 stats.storage += expSize;
                 stats.experiments++;
 
-                /* I hate this date stuff, I'm getting rid of all records where analysis date after endDate*/
                 let _datea = new Date(e.date.analyzed);
-                let _fake_datea = _datea;
-                //Special occasion before we run as usual, everything with the age less then a year equal 10$
-                if( _datea < dayx && dayx > yearAgo) { // If experiment is older then dayX and dayX within a year then we count all the records as old
-                    _fake_datea = BioWardrobe.getDiff(yearAgo,1,"d");
-                }
 
-                let price = BioWardrobe.ruleWorkflow(_fake_datea, endDate, _prules, defaultbill, Invoices, e['_id'], subscr);
+                let price = BioWardrobe.ruleWorkflow(_datea, endDate, _prules, defaultbill, Invoices, e['_id'], subscr);
 
                 let main_lab = l._id;
 
