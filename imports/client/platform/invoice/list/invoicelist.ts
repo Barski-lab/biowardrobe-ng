@@ -14,8 +14,9 @@ export class BWInvoiceList extends BWComponentBase implements AfterViewInit {
     private _data = [];
 
     private _columns: ITdDataTableColumn[] = [
+        { name: '_id',               hidden: true},
         { name: 'invoiceNumber',     label: 'Invoice \u2116', filter: true},
-        { name: 'laboratoryName',    label: 'Laboratory'},
+        { name: 'laboratoryName',    label: 'Laboratory',     filter: true},
         { name: 'billingBu',         label: 'BU' },
         { name: 'billingFund',       label: 'FUND' },
         { name: 'billingDep',        label: 'DEP' },
@@ -46,6 +47,7 @@ export class BWInvoiceList extends BWComponentBase implements AfterViewInit {
 
     private _refactorInvoiceData(singleInvoiceData){
         let dataFormated = {
+            "_id":               singleInvoiceData._id,
             "invoiceNumber":     singleInvoiceData.number,
             "laboratoryName":    singleInvoiceData.to.lab.name,
             "billingBu":         singleInvoiceData.to.billing.bu,

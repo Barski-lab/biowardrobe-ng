@@ -1,177 +1,166 @@
-<!--<div class="main-content">-->
-    <!--<div class="wrap-content container">-->
-        <!--<sd-page-title title="Invoice"></sd-page-title>-->
+<div class="main-content">
+    <div class="wrap-content container">
+        <div class="col-md-12" #pinvoice>
+            <div class="container bg-white border-around">
+                <div class="row">
+                    <div class="col-md-12" *ngIf="!!_invoiceData">
+                        <div class="invoice">
+                            <table class="table table-borderless"><tbody>
+                                <tr class="row invoice-logo"><td>
+                                    <div class="col-sm-6">
+                                        <img class="logo" alt="" [src]="_invoiceData.from.info.picture">
+                                    </div>
+                                </td><td>
+                                    <div class="col-sm-6 pull-right">
+                                        <p class="text-dark">
+                                            &#8470; {{_invoiceData.number}} <small class="text-light"> {{dateFormat(_invoiceData.issued)}} </small>
+                                        </p>
+                                    </div>
+                                </td>
+                                </tr>
+                                <tr class="row">
+                                    <td>
+                                        <div class="col-sm-4 pull-left">
+                                            <h4>Bill to:</h4>
+                                            <p class="text-dark">{{_invoiceData.to.lab.name}}</p>
+                                            <ul class="list-unstyled invoice-details padding-bottom-30 padding-top-10 text-dark">
+                                                <li>
+                                                    <strong>Business Unit:</strong> {{_invoiceData.to.billing.bu}}
+                                                </li>
+                                                <li>
+                                                    <strong>Fund:</strong> {{_invoiceData.to.billing.fund}}
+                                                </li>
+                                                <li>
+                                                    <strong>Account:</strong> {{_invoiceData.to.billing.acc}}
+                                                </li>
+                                                <li>
+                                                    <strong>Department:</strong> {{_invoiceData.to.billing.dep}}
+                                                </li>
+                                                <template *ngIf="_invoiceData.to.billing.fund >= 90000">
+                                                    <li>
+                                                        <strong>PC Business Unit:</strong> {{_invoiceData.to.billing.pcbu}}
+                                                    </li>
+                                                    <li>
+                                                        <strong>Project:</strong> {{_invoiceData.to.billing.prj}}
+                                                    </li>
+                                                    <li>
+                                                        <strong>Activity Code:</strong> {{_invoiceData.to.billing.acode}}
+                                                    </li>
+                                                    <li>
+                                                        <strong>Budget Reference:</strong> {{_invoiceData.to.billing.br}}
+                                                    </li>
+                                                </template>
+                                            </ul>
+                                        </div>
 
-        <!--<div class="col-md-12" #pinvoice>-->
-            <!--<div class="container bg-white border-around">-->
+                                    </td><td>
+                                    <div class="col-sm-4 pull-right">
+                                        <h4>Bill from:</h4>
+                                        <p class="text-dark">{{_invoiceData.from.info.name}}</p>
 
-                <!--<div class="row">-->
-                    <!--<div class="col-md-12" *ngIf="!!invoice">-->
-                        <!--<div class="invoice">-->
-                            <!--&lt;!&ndash;<div class="row invoice-logo">&ndash;&gt;-->
-                                <!--<table class="table table-borderless"><tbody>-->
-                                    <!--<tr class="row invoice-logo"><td>-->
-                                        <!--<div class="col-sm-6">-->
-                                            <!--<img class="logo" alt="" [src]="invoice.from.info.picture">-->
-                                        <!--</div>-->
-                                    <!--</td><td>-->
-                                        <!--<div class="col-sm-6 pull-right">-->
-                                            <!--<p class="text-dark">-->
-                                                <!--&#8470; {{invoice.number}} <small class="text-light"> {{dateFormat(invoice.issued)}} </small>-->
-                                            <!--</p>-->
-                                        <!--</div>-->
-                                    <!--</td>-->
-                                    <!--</tr>-->
-                                    <!--<tr class="row">-->
-                                        <!--<td>-->
-                                            <!--<div class="col-sm-4 pull-left">-->
-                                                <!--<h4>Bill to:</h4>-->
-                                                <!--<p class="text-dark">{{invoice.to.lab.name}}</p>-->
-                                                <!--<ul class="list-unstyled invoice-details padding-bottom-30 padding-top-10 text-dark">-->
-                                                    <!--<li>-->
-                                                        <!--<strong>Business Unit:</strong> {{invoice.to.billing.bu}}-->
-                                                    <!--</li>-->
-                                                    <!--<li>-->
-                                                        <!--<strong>Fund:</strong> {{invoice.to.billing.fund}}-->
-                                                    <!--</li>-->
-                                                    <!--<li>-->
-                                                        <!--<strong>Account:</strong> {{invoice.to.billing.acc}}-->
-                                                    <!--</li>-->
-                                                    <!--<li>-->
-                                                        <!--<strong>Department:</strong> {{invoice.to.billing.dep}}-->
-                                                    <!--</li>-->
-                                                    <!--<template [ngIf]="invoice.to.billing.fund >= 90000">-->
-                                                        <!--<li>-->
-                                                            <!--<strong>PC Business Unit:</strong> {{invoice.to.billing.pcbu}}-->
-                                                        <!--</li>-->
-                                                        <!--<li>-->
-                                                            <!--<strong>Project:</strong> {{invoice.to.billing.prj}}-->
-                                                        <!--</li>-->
-                                                        <!--<li>-->
-                                                            <!--<strong>Activity Code:</strong> {{invoice.to.billing.acode}}-->
-                                                        <!--</li>-->
-                                                        <!--<li>-->
-                                                            <!--<strong>Budget Reference:</strong> {{invoice.to.billing.br}}-->
-                                                        <!--</li>-->
-                                                    <!--</template>-->
-                                                <!--</ul>-->
-                                            <!--</div>-->
+                                        <ul class="list-unstyled invoice-details padding-bottom-30 padding-top-10 text-dark">
+                                            <li>
+                                                <strong>Business Unit:</strong> {{_invoiceData.from.billing.bu}}
+                                            </li>
+                                            <li>
+                                                <strong>Fund:</strong> {{_invoiceData.from.billing.fund}}
+                                            </li>
+                                            <li>
+                                                <strong>Department:</strong> {{_invoiceData.from.billing.dep}}
+                                            </li>
+                                            <li>
+                                                <strong>Account:</strong> {{_invoiceData.from.billing.acc}}
+                                            </li>
+                                            <li>
+                                                <strong>Issued:</strong> {{dateFormat(_invoiceData.issued)}}
+                                            </li>
+                                        </ul>
+                                    </div>
 
-                                        <!--</td><td>-->
-                                        <!--<div class="col-sm-4 pull-right">-->
-                                            <!--<h4>Bill from:</h4>-->
-                                            <!--<p class="text-dark">{{invoice.from.info.name}}</p>-->
-
-                                            <!--<ul class="list-unstyled invoice-details padding-bottom-30 padding-top-10 text-dark">-->
-                                                <!--<li>-->
-                                                    <!--<strong>Business Unit:</strong> {{invoice.from.billing.bu}}-->
-                                                <!--</li>-->
-                                                <!--<li>-->
-                                                    <!--<strong>Fund:</strong> {{invoice.from.billing.fund}}-->
-                                                <!--</li>-->
-                                                <!--<li>-->
-                                                    <!--<strong>Department:</strong> {{invoice.from.billing.dep}}-->
-                                                <!--</li>-->
-                                                <!--<li>-->
-                                                    <!--<strong>Account:</strong> {{invoice.from.billing.acc}}-->
-                                                <!--</li>-->
-                                                <!--<li>-->
-                                                    <!--<strong>Issued:</strong> {{dateFormat(invoice.issued)}}-->
-                                                <!--</li>-->
-                                            <!--</ul>-->
-                                        <!--</div>-->
-
-                                    <!--</td>-->
-                                    <!--</tr>-->
-                                <!--</tbody></table>-->
-                            <!--&lt;!&ndash;</div>&ndash;&gt;-->
-                            <!--&lt;!&ndash;<div class="row">&ndash;&gt;-->
-
-                            <!--&lt;!&ndash;</div>&ndash;&gt;-->
-                            <!--<div class="row">-->
-                                <!--<div class="col-sm-12" *ngFor="let i of invoice.invoice">-->
-                                    <!--<p>&nbsp;</p>-->
-                                    <!--<div class="col-sm-4">-->
-                                        <!--<p class="text-dark">{{i.project.name}}<br>-->
-                                            <!--<small class="text-light">{{i.project.description}}</small>-->
-                                        <!--</p>-->
-                                    <!--</div>-->
-                                    <!--<table class="table">-->
-                                        <!--<thead>-->
-                                        <!--<tr>-->
-                                            <!--<th class="small-width"> # </th>-->
-                                            <!--<th class="small-width"> Experiment &#8470; </th>-->
-                                            <!--<th class="small-width"> Analyzed </th>-->
-                                            <!--<th> Experiment Name </th>-->
-                                            <!--<th> Author </th>-->
-                                            <!--<th class="small-width"> Time (Minutes) </th>-->
-                                            <!--<th class="small-width"> Size (MB) </th>-->
-                                            <!--<th class="small-width"> Price </th>-->
-                                        <!--</tr>-->
-                                        <!--</thead>-->
-                                        <!--<tbody>-->
-                                        <!--<tr *ngFor="let t of i.transactions; let n = index">-->
-                                            <!--<td class="small-width"> {{n+1}} </td>-->
-                                            <!--<td class="small-width"> {{t.number}}</td>-->
-                                            <!--<td class="small-width">{{dateFormat(t.analyzed)}}</td>-->
-                                            <!--<td > {{t.name}} </td>-->
-                                            <!--<td > {{t.author}} </td>-->
-                                            <!--<td class="small-width"> {{(t.cputime).toFixed(4)}}</td>-->
-                                            <!--<td class="small-width"> {{experimentSize(t.size)}}</td>-->
-                                            <!--<td class="small-width"> {{t.price}}  </td>-->
-                                        <!--</tr>-->
-                                        <!--<tr>-->
-                                            <!--<td style="border-bottom: none"></td>-->
-                                            <!--<td style="border-bottom: none"></td>-->
-                                            <!--<td style="border-bottom: none"></td>-->
-                                            <!--<td style="border-bottom: none"></td>-->
-                                            <!--<td style="border-bottom: none">Total:</td>-->
-                                            <!--<td style="border-bottom: none">{{(i.project.total.cputime).toFixed(4)}}</td>-->
-                                            <!--<td style="border-bottom: none"> {{experimentSize(i.project.total.size)}}</td>-->
-                                            <!--<td style="border-bottom: none"> ${{ePrice(i.project.total.price)}}  </td>-->
-                                        <!--</tr>-->
-                                        <!--</tbody>-->
-                                    <!--</table>-->
-                                <!--</div>-->
-                            <!--</div>-->
-                            <!--<div class="row">-->
-                                <!--<div class="col-sm-12 invoice-block">-->
-                                    <!--<ul class="list-unstyled amounts text-small">-->
-                                        <!--<li>-->
-                                            <!--<strong >Total Transactions:</strong> {{invoice.total.transactions}}-->
-                                        <!--</li>-->
-                                        <!--<li>-->
-                                            <!--<strong >New Transactions:</strong> {{invoice.total.newtransactions}}-->
-                                        <!--</li>-->
-                                        <!--<li>-->
-                                            <!--<strong >Total Time (Hour):</strong> {{getTime(invoice.total.cputime)}}-->
-                                        <!--</li>-->
-                                        <!--<li>-->
-                                            <!--<strong >Total Size (GB):</strong> {{(invoice.total.size/(1024*1024)).toFixed(2)}}-->
-                                        <!--</li>-->
-                                        <!--<li *ngIf="invoice.total.subscription?.name">-->
-                                            <!--<strong >Subscription name:</strong> {{invoice.total.subscription.name}}-->
-                                        <!--</li>-->
-                                        <!--<li *ngIf="invoice.total.subscription?.name">-->
-                                            <!--<strong >Subscription price:</strong> ${{ePrice(invoice.total.subscription.price)}}-->
-                                        <!--</li>-->
-                                        <!--<li class="text-extra-large text-dark margin-top-15">-->
-                                            <!--<strong >Total Price:</strong> ${{ePrice(invoice.total.price)}}-->
-                                        <!--</li>-->
-                                    <!--</ul>-->
-                                    <!--<br>-->
-                                    <!--&lt;!&ndash;<a (click)="sendMail(pinvoice)" class="btn btn-o btn-primary hidden-print">&ndash;&gt;-->
-                                        <!--&lt;!&ndash;Email <i class="fa fa-envelope"></i>&ndash;&gt;-->
-                                    <!--&lt;!&ndash;</a>&ndash;&gt;-->
-                                    <!--<a (click)="printThis(pinvoice)" class="btn btn-o btn-primary hidden-print">-->
-                                        <!--Print <i class="fa fa-print"></i>-->
-                                    <!--</a>-->
-                                <!--</div>-->
-                            <!--</div>-->
-                        <!--</div>-->
-                    <!--</div>-->
-                <!--</div>-->
-            <!--</div>-->
-        <!--</div>-->
-    <!--</div>-->
-<!--</div>-->
+                                </td>
+                                </tr>
+                            </tbody></table>
+                            <div class="row">
+                                <div class="col-sm-12" *ngFor="let i of _invoiceData.invoice">
+                                    <p>&nbsp;</p>
+                                    <div class="col-sm-4">
+                                        <p class="text-dark">{{i.project.name}}<br>
+                                            <small class="text-light">{{i.project.description}}</small>
+                                        </p>
+                                    </div>
+                                    <table class="table">
+                                        <thead>
+                                        <tr>
+                                            <th class="small-width"> # </th>
+                                            <th class="small-width"> Experiment &#8470; </th>
+                                            <th class="small-width"> Analyzed </th>
+                                            <th> Experiment Name </th>
+                                            <th> Author </th>
+                                            <th class="small-width"> Time (Minutes) </th>
+                                            <th class="small-width"> Size (MB) </th>
+                                            <th class="small-width"> Price </th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let t of i.transactions; let n = index">
+                                            <td class="small-width"> {{n+1}} </td>
+                                            <td class="small-width"> {{t.number}}</td>
+                                            <td class="small-width">{{dateFormat(t.analyzed)}}</td>
+                                            <td > {{t.name}} </td>
+                                            <td > {{t.author}} </td>
+                                            <td class="small-width"> {{(t.cputime).toFixed(4)}}</td>
+                                            <td class="small-width"> {{experimentSize(t.size)}}</td>
+                                            <td class="small-width"> {{t.price}}  </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="border-bottom: none"></td>
+                                            <td style="border-bottom: none"></td>
+                                            <td style="border-bottom: none"></td>
+                                            <td style="border-bottom: none"></td>
+                                            <td style="border-bottom: none">Total:</td>
+                                            <td style="border-bottom: none">{{(i.project.total.cputime).toFixed(4)}}</td>
+                                            <td style="border-bottom: none"> {{experimentSize(i.project.total.size)}}</td>
+                                            <td style="border-bottom: none"> ${{ePrice(i.project.total.price)}}  </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-12 invoice-block">
+                                    <ul class="list-unstyled amounts text-small">
+                                        <li>
+                                            <strong >Total Transactions:</strong> {{_invoiceData.total.transactions}}
+                                        </li>
+                                        <li>
+                                            <strong >New Transactions:</strong> {{_invoiceData.total.newtransactions}}
+                                        </li>
+                                        <li>
+                                            <strong >Total Time (Hour):</strong> {{getTime(_invoiceData.total.cputime)}}
+                                        </li>
+                                        <li>
+                                            <strong >Total Size (GB):</strong> {{(_invoiceData.total.size/(1024*1024)).toFixed(2)}}
+                                        </li>
+                                        <li *ngIf="_invoiceData.total.subscription?.name">
+                                            <strong >Subscription name:</strong> {{_invoiceData.total.subscription.name}}
+                                        </li>
+                                        <li *ngIf="_invoiceData.total.subscription?.name">
+                                            <strong >Subscription price:</strong> ${{ePrice(_invoiceData.total.subscription.price)}}
+                                        </li>
+                                        <li class="text-extra-large text-dark margin-top-15">
+                                            <strong >Total Price:</strong> ${{ePrice(_invoiceData.total.price)}}
+                                        </li>
+                                    </ul>
+                                    <br>
+                                    <a (click)="printInvoice(pinvoice)" class="btn btn-o btn-primary hidden-print">
+                                        Print <i class="fa fa-print"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

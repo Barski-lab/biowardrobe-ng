@@ -5,17 +5,17 @@ import { CommonModule } from '@angular/common';
 import { BWPlatformComponentsModule } from '../components/bwplatformcomponents.module'
 
 import { BWInvoiceService } from './invoice.service';
-// import { BWInvoiceEdit } from './edit/invoiceedit'
+import { BWInvoiceEdit } from './edit/invoiceedit'
 import { BWInvoiceList } from './list/invoicelist'
 
 
 @NgModule({
     declarations: [
-        // BWInvoiceEdit,
+        BWInvoiceEdit,
         BWInvoiceList
     ],
     exports: [
-        // BWInvoiceEdit,
+        BWInvoiceEdit,
         BWInvoiceList
     ],
     imports: [

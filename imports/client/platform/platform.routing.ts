@@ -6,7 +6,7 @@ import { BWPlatform } from './platform';
 import { BWSampleEdit } from './sample/edit/sampleedit';
 import { BWSampleList } from './sample/list/samplelist';
 
-// import { BWInvoiceEdit } from './invoice/edit/invoiceedit';
+import { BWInvoiceEdit } from './invoice/edit/invoiceedit';
 import { BWInvoiceList } from './invoice/list/invoicelist';
 
 import { LoggedInGuard } from "../lib";
@@ -21,8 +21,8 @@ export const PlatformRouting: ModuleWithProviders = RouterModule.forChild([
         children: [
             {path: 'samples', component: BWSampleList},
             {path: 'sample', component: BWSampleEdit},
-            {path: 'invoices', component: BWInvoiceList}
-            // {path: 'invoice', component: BWInvoiceEdit},
+            {path: 'invoices', component: BWInvoiceList},
+            {path: 'invoice', component: BWInvoiceEdit},
         ]
     }
 ]);
