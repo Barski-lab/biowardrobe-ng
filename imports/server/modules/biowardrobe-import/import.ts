@@ -21,7 +21,8 @@ import {
 
 import { Log } from '../logger';
 import { CWLCollection, Labs, Projects, Samples } from '../../../collections/shared';
-import { Pricing, Billing, Invoices } from '../../../collections/server';
+import { Pricing, Billing } from '../../../collections/server';
+import { Invoices } from '../../../collections/shared';
 import { FilesUpload } from '../../methods/filesupload';
 import { Observable } from 'rxjs';
 
@@ -502,8 +503,6 @@ class BioWardrobe {
                         }
                     }
                 }).map(project => {return project._id});
-
-            Log.debug("labProjectIds", labProjectIds);
 
             let ex = Samples.find(
                 {"projectId": {$in: labProjectIds}},
