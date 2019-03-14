@@ -111,7 +111,7 @@ export class WorkflowsGitFetcher {
     }
 
 
-    static removeMetadata(dataObj, excludeKeys=["$namespaces", "$schemas", "doc"]){
+    static removeMetadata(dataObj, excludeKeys:any = ["$namespaces", "$schemas", "doc"]){
         if (_.isObject(dataObj) && !_.isArray(dataObj)){
             Object.keys(dataObj).forEach((key) => {
                 if (key === "$namespaces"
@@ -157,7 +157,7 @@ dag.add(CWLJobGatherer(dag=dag), to='bottom')
     }
 
     static parseWorkflow(workflowEntry, latestCommit, gitUrl, gitPath) {
-
+        //@ts-ignore
         const workflowRawData = Promise.await(workflowEntry.getBlob()).toString();
         const workflowSerializedData = safeLoad(workflowRawData);
         const workflowPath = workflowEntry.path();
@@ -180,7 +180,7 @@ dag.add(CWLJobGatherer(dag=dag), to='bottom')
                 "sha": sha,
                 "remote": gitUrl,
                 "path": workflowPath,
-                "local": gitPath
+                "local_path": gitPath
             },
             "date": {
                 "updated": new Date()
@@ -210,7 +210,7 @@ dag.add(CWLJobGatherer(dag=dag), to='bottom')
         }
         CWLCollection.update({ _id: targetId }, { $set: cwlUpdated }, { upsert: true });
 
-        WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dagFolder"], path.basename(workflowPath).replace(".cwl", "").replace(".", "_dot_")+"-"+sha, workflowSerializedData);
+        WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dags_folder"], path.basename(workflowPath).replace(".cwl", "").replace(".", "_dot_")+"-"+sha, workflowSerializedData);
     }
 
 }

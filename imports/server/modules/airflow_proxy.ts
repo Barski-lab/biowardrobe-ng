@@ -24,7 +24,8 @@ import { Log } from './logger';
 import * as path from 'path';
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
-
+import * as zlib from 'zlib';
+import {WorkflowsGitFetcher} from '../methods/git';
 
 class AirflowProxy {
 
@@ -33,6 +34,10 @@ class AirflowProxy {
 
     constructor () {
         this.initRoutes ();
+        // //TEMPORARY:
+        // let outputs = AirflowProxy.update_results(test_sample, Samples.findOne({_id: "cjyqCLwBaaKAyLPEo"}));
+        // Log.debug(outputs);
+        // AirflowProxy.master_progress_update("cjyqCLwBaaKAyLPEo", {progress: null, ...outputs}).subscribe(r => Log.debug(r));
     }
 
     /**
@@ -56,7 +61,8 @@ class AirflowProxy {
         this.app.use(bodyParser.urlencoded({ extended: true }));
         this.app.use(bodyParser.json());
 
-        this.app.post('/airflow/process/status', this.debugMiddle, Meteor.bindEnvironment(self.listen_progress));
+        this.app.post('/airflow/progress', this.debugMiddle, Meteor.bindEnvironment(self.listen_progress));
+        this.app.post('/airflow/results', this.debugMiddle, Meteor.bindEnvironment(self.listen_results));
         this.app.use(this.routes);
         WebApp.rawConnectHandlers.use(this.app);
     }
@@ -88,7 +94,7 @@ class AirflowProxy {
             AirflowProxy.dag_url(dag_id),
             {
                 data,
-                timeout: 10000
+                timeout: 60000
             })
             .pipe(
                 map((result) => ({result, sample})),
@@ -123,7 +129,10 @@ class AirflowProxy {
             return of({ error: true, message: `no cwl ${sample.cwlId}`, sample: sample });
         }
 
-        let dag_id = path.basename(cwl.git.path, ".cwl");
+        let dag_id = `${cwl._id}-${cwl.git.sha}`; // path.basename(cwl.git.path, ".cwl");
+
+        let packed = JSON.parse(zlib.gunzipSync(new Buffer(cwl.source.packed, 'base64')).toString());
+        WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dags_folder"], dag_id, packed);
 
         let queue = airflowQueueCollection.findOne({sample_id});
         if (queue) {
@@ -188,14 +197,108 @@ class AirflowProxy {
             })
         };
 
+        let dag_id = `${cwl._id}-${cwl.git.sha}`; // path.basename(cwl.git.path, ".cwl");
+
         /**
          * DAG name can be changed in the future
          */
-        return AirflowProxy.airflow_post(path.basename(cwl.git.path, ".cwl"), data, sample);
+        return AirflowProxy.airflow_post(dag_id, data, sample);
     }
 
     /**
-     * Middleware to listen for a progress report
+     * Saves cwl into airflow dir
+     *
+     * @param cwl_id
+     */
+    public static save_cwl_to_airflow(cwl_id): Observable<any> {
+
+        let cwl: any = CWLCollection.findOne({_id: cwl_id});
+        if (!cwl) {
+            Log.error("No cwl", cwl_id);
+            return of({ error: true, message: `no cwl ${cwl_id}` });
+        }
+        let packed = JSON.parse(zlib.gunzipSync(new Buffer(cwl.source.packed, 'base64')).toString());
+
+        WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dags_folder"], `${cwl._id}-${cwl.git.sha}`, packed);
+        return of(cwl._id);
+    }
+
+    /**
+     * Middleware to listen for a progress report, endpoint + /progress
+     */
+    public listen_results(request, res, next) {
+        let { body } = request;
+
+        if (!body || !body.payload) {
+            return next();
+        }
+
+        Log.debug('Listen process status:', body.payload);
+
+        let {dag_id, run_id, results} = body.payload;
+
+        /**
+         * At first we had to clean previous DAG run,
+         * So if report from cleaning DAG, we trigger queued DAG
+         */
+        if (dag_id === 'clean_dag_run') {
+            Log.debug(`Successfully cleaned! ${run_id}`);
+            AirflowProxy.trigger_dag(run_id)
+                .pipe(
+                    switchMap(({result, error, message, sample}) => {
+                        let progress: any = null;
+                        Log.debug(`Switch map trigger dag! ${sample}`);
+                        if (error) {
+                            Log.error("Trigger:", message);
+                            progress = {
+                                title: "Error",
+                                progress: 0,
+                                error: message
+                            }
+                        } else if (result) {
+                            Log.debug("Trigger:", result);
+                            progress = {
+                                title: "Queued",
+                                progress: 0
+                            }
+                        }
+                        if (progress && sample) {
+                            return AirflowProxy.master_progress_update(sample._id, {progress} as any)
+                        } else {
+                            throw new Error(`No sample ${progress}`);
+                        }
+                    }),
+                    catchError((e) => of({error: true, message: `Error: ${e}`}))
+                )
+                .subscribe((r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
+            return next();
+        }
+
+        let sample: any = Samples.findOne({_id: run_id});
+        if (!sample) {
+            Log.error("No sample:", run_id);
+            return next();
+        }
+
+        /**
+         * If report from project with general pipelines either ignore or store outputs locally?
+         */
+        if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
+            Log.debug("Project is not for analysis yet, store results?");
+            return next();
+        }
+
+
+        /**
+         * Update final results to the master as well as store all the outputs in local file storage ostrio:files
+         * moved to the new endpoint /results!
+         */
+        let outputs: any = AirflowProxy.update_results(results, sample);
+        AirflowProxy.master_progress_update(run_id, {progress: {progress: 100, }, outputs}).subscribe(r => Log.debug(r));
+    }
+
+    /**
+     * Middleware to listen for a progress report, endpoint + /progress
      */
     public listen_progress(request, res, next) {
         let { body } = request;
@@ -207,43 +310,9 @@ class AirflowProxy {
         Log.debug('Listen process status:', body.payload);
 
         // state: 'running','success'
-        let {dag_id, run_id, execution_date, state, progress, title, error, tasks, start_date, end_date, results} = body.payload;
+        let {dag_id, run_id, state, progress, error} = body.payload;
 
-        /**
-         * At first we clean, so if report from cleaning DAG, if report is success we trigger queued DAG
-         */
         if (dag_id === 'clean_dag_run') {
-            if (state === 'success') {
-                Log.debug(`Successfully cleaned! ${run_id}`);
-                AirflowProxy.trigger_dag(run_id)
-                    .pipe(
-                        switchMap(({result, error, message, sample}) => {
-                            let progress: any = null;
-                            Log.debug(`Switch map trigger dag! ${sample}`);
-                            if (error) {
-                                Log.error("Trigger:", message);
-                                progress = {
-                                    title: "Error",
-                                    progress: 0,
-                                    error: message
-                                }
-                            } else if (result) {
-                                Log.debug("Trigger:", result);
-                                progress = {
-                                    title: "Queued",
-                                    progress: 0
-                                }
-                            }
-                            if (progress && sample) {
-                                return AirflowProxy.master_progress_update(sample._id, {progress} as any)
-                            } else {
-                                throw new Error(`No sample ${progress}`);
-                            }
-                        }),
-                        catchError((e) => of({error: true, message: `Error: ${e}`}))
-                    )
-                    .subscribe((r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
-            }
             return next();
         }
 
@@ -265,38 +334,29 @@ class AirflowProxy {
          * Update progress report to the master
          */
         let progress_to_master: any = null;
-        if (progress || error) {
             if (error) {
-                Log.error({dag_id, run_id, state, title, progress, error});
+                Log.error({dag_id, run_id, state, progress, error});
                 progress_to_master = {
                     error,
                     progress,
                     title: "Error"
                 }
             } else {
-                Log.debug({dag_id, run_id, state, title, progress});
+                Log.debug({dag_id, run_id, state, progress});
                 progress_to_master = {
                     progress,
-                    title
+                    title: state // TODO: ?? Send state?
                 }
             }
-        }
 
-        /**
-         * Update final results to the master as well as store all the outputs in local file storage ostrio:files
-         */
         let outputs: any = null;
-        if (results) { // run_id, sample
-            outputs = AirflowProxy.update_results(results, sample);
-        }
-
-        AirflowProxy.master_progress_update(run_id, {progress: progress_to_master, ...outputs}).subscribe(r => Log.debug(r));
+        AirflowProxy.master_progress_update(run_id, {progress: progress_to_master, outputs}).subscribe(r => Log.debug(r));
 
         return next();
     }
 
     /**
-     *
+     * Update outputs with ostrio files id and store info in files collection
      * @param results
      * @param sample
      * @param userId
@@ -313,7 +373,7 @@ class AirflowProxy {
                 userId: sample.userId,
                 isOutput: true
             };
-            return {meta, fileName, userId: sample._id, fileId: Random.id()};
+            return {meta, fileName, userId: sample.userId, fileId: Random.id()};
         };
 
         for ( const output_key in results ) {
@@ -341,7 +401,7 @@ class AirflowProxy {
                 outputs[output_key] = results[output_key];
             }
         }
-        return {outputs};
+        return outputs;
     }
 
     /**
@@ -362,6 +422,8 @@ class AirflowProxy {
         if ( outputs )  {
             obj = { ...obj, outputs};
         }
+
+        Log.debug("master_progress_update", obj);
 
         return DDPConnection
             .call("satellite/projects/sample/update", obj)
@@ -413,4 +475,6 @@ Meteor.startup(() => {
             catchError((e) => of({ error: true, message: `Error: ${e}` }))
         )
         .subscribe( (r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
+
+
 });
