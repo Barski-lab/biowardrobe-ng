@@ -26,5 +26,8 @@ export class BWInvoiceService extends BWServiceBase {
             });
     }
 
+    public createInvoice (invoiceDate){
+        return Meteor.call("invoices/create", invoiceDate);
+    }
 }
 

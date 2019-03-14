@@ -1,5 +1,6 @@
 import { NgModule, ModuleWithProviders } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
+import { MatDatepickerModule, MatNativeDateModule } from '@angular/material'
 import { CommonModule } from '@angular/common';
 
 import { BWPlatformComponentsModule } from '../components/bwplatformcomponents.module'
@@ -21,7 +22,9 @@ import { BWInvoiceList } from './list/invoicelist'
     imports: [
         CommonModule,
         ReactiveFormsModule,
-        BWPlatformComponentsModule
+        BWPlatformComponentsModule,
+        MatNativeDateModule,
+        MatDatepickerModule
     ]
 })
 

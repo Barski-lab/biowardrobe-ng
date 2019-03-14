@@ -46,7 +46,7 @@ const stats = {
  * BioWardrobe class wraps BioWardrobeMySQL calls (access to biowardrobe mysql database tables)
  * to sync differences with local mongodb and remote instance of biowardrobe-ng
  */
-class BioWardrobe {
+export class BioWardrobe {
 
     /**
      * Imports workers into local users mongo collection and syncs users with remote server (trough 'satellite/accounts/createUser' call)
@@ -415,14 +415,12 @@ class BioWardrobe {
         return price;
     }
 
-    static getInvoices() {
+    static getInvoices(_now = new Date()) {
 
         if (!Meteor.settings["billing"]){
             Log.debug("Skip invoice generation. Billing information is absent in the settings file");
             return of(1);
         }
-
-        let _now = new Date(2016, 11, 16); // new Date(); new Date(2016,5,16);
 
         let startDate = new Date(_now.getFullYear(), _now.getMonth() - 1, 1, 0, 0, 0);
         let endDate = new Date(_now.getFullYear(), _now.getMonth(), 0, 23, 59, 59);
@@ -923,7 +921,7 @@ Meteor.startup(() => {
                     // BioWardrobe.assignWorkersToLaboratories(),
                     // BioWardrobe.assignProjectsToWorkers(),
                     BioWardrobe.getSamples(),
-                    BioWardrobe.getInvoices(),
+                    // BioWardrobe.getInvoices(),
                     // BioWardrobe.assignSamplesToProjects()
                 ).pipe(concatAll())
             })

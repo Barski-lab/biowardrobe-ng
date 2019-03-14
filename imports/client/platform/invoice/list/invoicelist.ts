@@ -33,8 +33,8 @@ export class BWInvoiceList extends BWComponentBase implements AfterViewInit {
         this._router.navigate(['/platform/invoice', {invoice_id: payload.row._id}]);
     }
 
-    onAddClick (payload){
-        console.log("onAddClick is clicked");
+    createInvoice (invoiceDate){
+        this._invoice.createInvoice(invoiceDate);
     }
 
     constructor(
@@ -45,8 +45,8 @@ export class BWInvoiceList extends BWComponentBase implements AfterViewInit {
         super();
     }
 
-    private _refactorInvoiceData(singleInvoiceData){
-        let dataFormated = {
+    static _refactorInvoiceData(singleInvoiceData){
+        return {
             "_id":               singleInvoiceData._id,
             "invoiceNumber":     singleInvoiceData.number,
             "laboratoryName":    singleInvoiceData.to.lab.name,
@@ -61,7 +61,6 @@ export class BWInvoiceList extends BWComponentBase implements AfterViewInit {
             "totalPrice":        singleInvoiceData.total.price,
             "totalTransactions": singleInvoiceData.total.transactions
         };
-        return dataFormated;
     }
 
     ngAfterViewInit() {
@@ -69,7 +68,7 @@ export class BWInvoiceList extends BWComponentBase implements AfterViewInit {
             .subscribe(allInvoiceData => {
                 this._zone.run(() => {
                     this._data = allInvoiceData.map(singleInvoiceData => {
-                        return this._refactorInvoiceData(singleInvoiceData);
+                        return BWInvoiceList._refactorInvoiceData(singleInvoiceData);
                     });
                 });
             });
