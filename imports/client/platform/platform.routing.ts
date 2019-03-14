@@ -9,7 +9,7 @@ import { BWSampleList } from './sample/list/samplelist';
 import { BWInvoiceEdit } from './invoice/edit/invoiceedit';
 import { BWInvoiceList } from './invoice/list/invoicelist';
 
-import { LoggedInGuard } from "../lib";
+import { LoggedInGuard, LoggedInAdminGuard } from "../lib";
 
 
 // Add LoggedInGuard to the routes that should be protected
@@ -21,8 +21,8 @@ export const PlatformRouting: ModuleWithProviders = RouterModule.forChild([
         children: [
             {path: 'samples', component: BWSampleList},
             {path: 'sample', component: BWSampleEdit},
-            {path: 'invoices', component: BWInvoiceList},
-            {path: 'invoice', component: BWInvoiceEdit},
+            {path: 'invoices', component: BWInvoiceList, canActivate: [LoggedInAdminGuard]},
+            {path: 'invoice', component: BWInvoiceEdit, canActivate: [LoggedInAdminGuard]},
         ]
     }
 ]);

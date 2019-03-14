@@ -86,3 +86,15 @@ export class LoggedInGuard implements CanActivate {
         });
     }
 }
+
+@Injectable()
+export class LoggedInAdminGuard implements CanActivate {
+
+    constructor(private _authService: BWAccountService, private _router:Router) {}
+
+    canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot):Observable<any> {
+        return this._authService.account$.filter(account => account.isAccessible).map((account) => {
+            return account.hasPermission(['admin']);
+        });
+    }
+}
