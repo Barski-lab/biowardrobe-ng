@@ -9,6 +9,7 @@ import { BWDraftService } from '../lib'
 
 import { BWPlatformComponentsModule } from './components/bwplatformcomponents.module'
 import { SampleModule } from './sample/sample.module'
+import { InvoiceModule } from './invoice/invoice.module'
 import { CWLModule } from './cwl/cwl.module'
 
 
@@ -25,6 +26,7 @@ import { CWLModule } from './cwl/cwl.module'
         PlatformRouting,
         BWPlatformComponentsModule,
         SampleModule.forRoot(),        // Note, we called with forRoot to include providers
+        InvoiceModule.forRoot(),        // Note, we called with forRoot to include providers
         CWLModule.forRoot()            // Note, we called with forRoot to include providers
     ]
 })

@@ -55,3 +55,17 @@
           }
         ```
         - Export `*.cwl` and correspondent `*.py` file into `airflow.dagFolder`
+
+## BioWardrobe-NG invoice generation
+
+1. Read `billing` configuration from `settings.json` to allow invoice generation (if absent - skip invoice generation)
+
+   ```yaml
+      "billing":{
+        "organization": "",
+        "businessUnit": "",
+        "fund": "",
+        "department": "",
+        "account": ""
+      }
+   ```
