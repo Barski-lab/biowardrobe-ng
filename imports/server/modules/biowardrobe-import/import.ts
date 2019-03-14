@@ -33,7 +33,7 @@ const path = require("path");
 
 let excluded_laboratories = {};
 
-const stats = {
+const stats: any = {
     storage: 0,
     cputime: 0,
     users: 0,
@@ -438,10 +438,10 @@ export class BioWardrobe {
         let defaultbill = Pricing.findOne({"type.default":true});
 
         const lbs = Labs.find();
-        lbs.forEach((l) => {
+        lbs.forEach((l: any) => {
 
-            let lab_invoice = {};
-            let _invoices = {};
+            let lab_invoice: any = {};
+            let _invoices: any = {};
             let _tobil;
             let _prules;
             let subscr = {};
@@ -507,7 +507,7 @@ export class BioWardrobe {
                 {"projectId": {$in: labProjectIds}},
                 {sort: {"stats.dateanalyzed": 1}});
 
-            ex.forEach((e)=>{
+            ex.forEach((e: any)=>{
 
                 //TODO: put in separate function that goes trough all experiments
                 let expSize = FilesUpload.find({"meta.sampleId": e._id}).map(f => {return f.size}).reduce((a,b) => a + b, 0);

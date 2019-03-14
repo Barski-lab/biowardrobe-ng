@@ -41,7 +41,7 @@ interface Info {
     refreshSessionInterval?: number;
 }
 
-const moduleId = "postform"; //path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf("."));
+const moduleId = path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf("."));
 
 export function getCollectionParams (collectionNameDefault: string, nullConnectionDefault: boolean){
     if (   Meteor.settings
