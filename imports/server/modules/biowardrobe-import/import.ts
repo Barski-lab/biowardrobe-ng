@@ -591,6 +591,10 @@ function get_sync_type() {
 Meteor.startup(() => {
     if (Meteor.settings['biowardrobe'] && Meteor.settings['biowardrobe']['db']) {
 
+        CWLCollection._ensureIndex({ "git.path": 1 });
+        CWLCollection._ensureIndex({ "git.remote": 1 });
+        Samples._ensureIndex({ "date.modified": 1 });
+
         Labs._ensureIndex({ "owner._id": 1 }, { unique: true });
         Labs._ensureIndex({ "biowardrobe_import.laboratory_id": 1 });
         Samples._ensureIndex({ "biowardrobe_import.sample_uid": 1 });

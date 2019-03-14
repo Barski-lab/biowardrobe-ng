@@ -49,7 +49,7 @@ export class DDPConnection {
     private _do_connect() {
 
         if (!Meteor.settings.rc_server) {
-            return of(null);
+            return;
         }
 
         if (!DDPConnection.DDPConnection) {
@@ -59,7 +59,6 @@ export class DDPConnection {
             // TODO: do not redefine default functions 'subscribe' etc
             // Proxy the public methods of Meteor.connection so they can
             // be called directly on Meteor.
-
         }
 
         return this.onReconnect()
@@ -116,7 +115,8 @@ export class DDPConnection {
                     this._labsSubs(),
                     this._projectsSubs(),
                     this._samplesSubs(),
-                    this._requestsSubs()),
+                    this._requestsSubs()
+                ),
                 catchError((e) => of({ error: true, message: `Reconnect error: ${e}` }))
             ).subscribe(this._sync$);
     }
@@ -199,28 +199,30 @@ export class DDPConnection {
      */
     private _observeChanges(_subscription, _remote_collection_name, _collection?, _callbacks?) {
         let self = this;
-        _callbacks = _callbacks || {
-            added(id, fields) {
-                Log.debug(`${_remote_collection_name}/added:`, id, Object.keys(fields));
-                self._main_events$.next({name: _remote_collection_name, event: 'added', id: id});
-                if (_collection) {
-                    _collection.update({ _id: id }, { $set: fields }, { upsert: true });
+        if (!_callbacks) {
+            _callbacks = {
+                added(id, fields) {
+                    Log.debug(`${_remote_collection_name}/added:`, id, Object.keys(fields));
+                    self._main_events$.next({name: _remote_collection_name, event: 'added', id: id});
+                    if (_collection) {
+                        _collection.update({_id: id}, {$set: fields}, {upsert: true});
+                    }
+                },
+                changed(id, fields) {
+                    Log.debug(`${_remote_collection_name}/changed:`, id, Object.keys(fields));
+                    self._main_events$.next({name: _remote_collection_name, event: 'changed', id: id});
+                    if (_collection) {
+                        _collection.update({_id: id}, {$set: fields}, {upsert: true});
+                    }
+                },
+                removed(id) {
+                    Log.debug(`${_remote_collection_name}/removed:`, id);
+                    self._main_events$.next({name: _remote_collection_name, event: 'removed', id: id});
                 }
-            },
-            changed(id, fields) {
-                Log.debug(`${_remote_collection_name}/changed:`, id, Object.keys(fields));
-                self._main_events$.next({name: _remote_collection_name, event: 'changed', id: id});
-                if (_collection) {
-                    _collection.update({ _id: id }, { $set: fields }, { upsert: true });
-                }
-            },
-            removed(id) {
-                Log.debug(`${_remote_collection_name}/removed:`, id);
-                self._main_events$.next({name: _remote_collection_name, event: 'removed', id: id});
-            }
-        };
-        return DDPConnection.subscribeAutorun(_subscription, () => {
-            let _c_coll = new Mongo.Collection(_remote_collection_name, rc_connection);
+            };
+        }
+        return DDPConnection.subscribeAutorun(_subscription, (d) => {
+            let _c_coll = new Mongo.Collection(_remote_collection_name, DDPConnection.rc_connection);
             return _c_coll.find().observeChanges(_callbacks);
         });
     }
@@ -324,10 +326,14 @@ export class DDPConnection {
     public static get connection() {
         return DDPConnection.DDPConnection;
     }
+
+    public static get rc_connection() {
+        return {connection: DDPConnection.connection, _suppressSameNameError: true};
+    }
+
 }
 
 export const connection = new DDPConnection();
-export const rc_connection: any = { connection: DDPConnection.connection, _suppressSameNameError: true };
 
 ////// HELPER FUNCTIONS
 export interface CallbacksObject {
