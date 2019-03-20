@@ -9,11 +9,11 @@ const CWLPublishFields = {
 };
 
 
-// TODO: add check, define wich parameters should define the selector, which fields to publish
+// TODO: add check, define which parameters should define the selector, which fields to publish
 Meteor.publish('cwl/list', function (params = {}) {
     Log.debug('cwl/list',this.userId, params);
     if (this.userId) {
-        return CWLCollection.find(params, CWLPublishFields);
+        return CWLCollection.find({}, CWLPublishFields);
     } else {
         this.ready();
     }

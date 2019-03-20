@@ -15,11 +15,13 @@ import { of } from 'rxjs/observable/of';
 import { CWLCollection, Drafts, Labs, Projects, Samples, Requests } from '../../collections/shared';
 
 import { Log } from './logger';
+import {ModuleCollection} from './remotes/postform';
 
 export class DDPConnection {
     private static DDPConnection: DDP.DDPStatic = null;
     private static _hooks = {};
     private public_key: string;
+    private common_project_id: string;
     // private static _messages = { active: [], backup: [] };
 
     private _sync$: BehaviorSubject<any> = new BehaviorSubject<any>(null);
@@ -40,6 +42,10 @@ export class DDPConnection {
 
     public get server_public_key() {
         return this.public_key;
+    }
+
+    public get satellite_common_project_id() {
+        return this.common_project_id;
     }
 
     constructor() {
@@ -68,10 +74,11 @@ export class DDPConnection {
                     this.public_key = undefined;
                     return DDPConnection.call('satellite/auth', Meteor.settings.rc_server_token);
                 }),
-                filter(({ satId, pubkey }) => !!satId),
-                switchMap( ({ satId, pubkey }) => {
+                filter(({ satId, pubkey, common_project_id }) => !!satId),
+                switchMap( ({ satId, pubkey, common_project_id }) => {
                     let modules = [];
                     this.public_key = pubkey;
+                    this.common_project_id = common_project_id;
 
                     if(DDPConnection._hooks["files"]) {
 
@@ -140,19 +147,27 @@ export class DDPConnection {
                 if (!_user) {
                     Log.debug(`satellite/users/added:`, id, fields);
                     fields["_id"] = id;
-                    Meteor.users.update({_id: id}, fields, {upsert: true});
-                } else
-                if (_user && _user._id != id) {
-                    Log.info('Replace old user:', id, _user._id);
-                    _user['old_id'] = _user['old_id'] || [];
-                    _user['old_id'].push(_user._id);
-                    _user['_id'] = id;
-                    _user['roles'] = fields['roles'];
-                    _user['profile'] = fields['profile'];
-                    _user['emails'] = fields['emails'];
-                    Meteor.users.insert(_user);
-                    Meteor.users.remove({ _id: _user._id });
+                    Meteor.users.update({_id: id}, {$set: fields}, {upsert: true});
+                } else {
+                    if (_user._id != id) {
+                        Log.info('Replace old user:', id, _user._id);
+                        let old_id = _user._id;
+                        _user['old_id'] = _user['old_id'] || [];
+                        _user['old_id'].push(_user._id);
+                        _user['_id'] = id;
+                        _user['roles'] = fields['roles'];
+                        _user['profile'] = fields['profile'];
+                        // TODO: All emails to add? or just the domain one
+                        _user['emails'] = fields['emails'];
+                        Meteor.users.remove({ _id: old_id });
+                        Meteor.users.update({ _id: id }, { $set: _user }, { upsert: true });
+                        let lab: any = Labs.findOne({"owner._id": old_id});
+                        let projects: any = Projects.find({ $and: [{"labs._id": lab._id }, {"labs.main": true}]}).map((p:any) => p._id);
+                        Labs.remove({"owner._id": old_id});
+                    }
                 }
+                // TODO: temporary solution
+                ModuleCollection.update({email: _email}, {$set: {"userId": id}});
             }
         });
     }

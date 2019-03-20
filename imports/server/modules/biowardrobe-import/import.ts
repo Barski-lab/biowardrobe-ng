@@ -64,8 +64,9 @@ export class BioWardrobe {
                 mergeMap((w) => {
                     const email = w['email'].toLowerCase();
                     const user = Meteor.users.findOne({ 'emails.address': email });
-                    if (!user) {
-                        if (!Meteor.settings.rc_server) {
+
+                    if (!Meteor.settings.rc_server) {
+                        if (!user) {
                             let userId = Accounts.createUser({
                                 email: email,
                                 profile: {
@@ -75,16 +76,16 @@ export class BioWardrobe {
                             });
                             Accounts.addEmail(userId, email, true);
                             return of(userId);
-                        } else {
+                        }
+                        return of(user['_id']);
+                    } else {
+                        if (!user || (user["biowardrobe_import"] && !user["biowardrobe_import"]["synchronized"]) ) {
                             Log.debug('Call createUser', w['fname'], w['lname'], email);
                             return DDPConnection.call('satellite/accounts/createUser', w['fname'], w['lname'], email);
                         }
                     }
-                    if (!user["biowardrobe_import"]) {
-                        return of(user['_id']);
-                    } else {
-                        return of(null);
-                    }
+
+                    return of(null);
                 }, (biowardrobeRecord, userId, outerIndex, innerIndex) => ({userId, biowardrobeRecord})),
                 filter(_ => _.userId),
                 reduce((acc, val) => {
@@ -387,6 +388,16 @@ export class BioWardrobe {
         return null;
     }
 
+    /**
+     *
+     * @param dateA
+     * @param endDate
+     * @param billing
+     * @param dbilling
+     * @param invs
+     * @param id
+     * @param subscr
+     */
     static ruleWorkflow(dateA, endDate, billing, dbilling, invs, id, subscr) {
         let rule = BioWardrobe.getRule(dateA, endDate, billing);
         let price = 0;
@@ -415,6 +426,10 @@ export class BioWardrobe {
         return price;
     }
 
+    /**
+     *
+     * @param _now
+     */
     static getInvoices(_now = new Date()) {
 
         if (!Meteor.settings["billing"]){
@@ -501,7 +516,7 @@ export class BioWardrobe {
                             $and: [ {"_id": l._id}, {"main": true} ]
                         }
                     }
-                }).map(project => {return project._id});
+                }).map((project:any) => {return project._id});
 
             let ex = Samples.find(
                 {"projectId": {$in: labProjectIds}},
@@ -545,7 +560,7 @@ export class BioWardrobe {
                     author: e['author'],
                     name: e.metadata.alias,
                     size: expSize,
-                    cputime: new Date(e.date.analyse_end) - new Date(e.date.analyse_start),
+                    cputime: (new Date(e.date.analyse_end) - new Date(e.date.analyse_start))*1,
                     price: price
                 });
                 _invoices[e.projectId].project.total.size += expSize*1;
@@ -577,7 +592,9 @@ export class BioWardrobe {
         return of(1);
     }
 
-    // @TODO: Do we work only with completed experiments or we process all of them? We should use only completed ones
+    /**
+     * @TODO: Do we work only with completed experiments or we process all of them? We should use only completed ones
+     */
     static getSamples() {
         return BioWardrobeMySQL.getExperiments().pipe(
 
@@ -679,15 +696,11 @@ export class BioWardrobe {
                 };
 
                 let cwlPath = "workflows/" + experiment["workflow"];
-                if (Meteor.settings['git'] && Meteor.settings['git']["workflowsDir"]){
-                    cwlPath = path.join(Meteor.settings['git']["workflowsDir"], experiment["workflow"]);
-                }
+
                 experiment["cwl"] = CWLCollection.findOne({"git.path": cwlPath});
                 if (!experiment["cwl"]) { // !e['cwl']._id
                     return of(null);
                 }
-
-
 
                 // Add updstream
                 const _upstream_data = Samples.findOne(
@@ -745,89 +758,111 @@ export class BioWardrobe {
                 return of(experiment);
             },
                 (biowardrobeRecord, sample, outerIndex, innerIndex) => ({ sample, biowardrobeRecord })),
-            filter((e) => {
-                const exp = e.sample;
-                return exp && exp['cwl'] && exp['cwl']._id && exp['project']._id && exp['outputs'] && exp['outputs']['bambai_pair']; // && exp['etype'].includes('RNA')
+            filter(({sample}) => {
+                return sample && sample['cwl'] && sample['cwl']._id && sample['project']._id && sample['outputs'] && sample['outputs']['bambai_pair']; // && sample['etype'].includes('RNA')
             }),
-            mergeMap((e) => {
-                const experiment = e.sample;
-                let sample = {
-                    "userId": experiment['userId'],
-                    "author": experiment['author'],
-                    "cwlId": experiment['cwl']._id,
-                    "projectId": experiment['project']._id,
+            mergeMap(({sample, biowardrobeRecord}) => {
+                let local_sample = {
+                    "userId": sample['userId'],
+                    "author": sample['author'],
+                    "cwlId": sample['cwl']._id,
+                    "projectId": sample['project']._id,
                     "date": {
-                        "created": new Date(experiment['dateadd']),
-                        "analyzed": new Date(experiment['dateanalyzed']),
-                        "analyse_start": new Date(experiment['dateanalyzes']),
-                        "analyse_end": new Date(experiment['dateanalyzee']),
+                        "created": new Date(sample['dateadd']),
+                        "analyzed": new Date(sample['dateanalyzed']),
+                        "analyse_start": new Date(sample['dateanalyzes']),
+                        "analyse_end": new Date(sample['dateanalyzee']),
                     },
-                    "metadata": experiment['metadata'],
-                    "upstream": experiment['upstreams'],
-                    "inputs": experiment['inputs'],
-                    "outputs": experiment['outputs'],
+                    "metadata": sample['metadata'],
+                    "upstream": sample['upstreams'],
+                    "inputs": sample['inputs'],
+                    "outputs": sample['outputs'],
                     "preview": {
-                        "position1": experiment['metadata']['cells'],
-                        "position2": experiment['metadata']['alias'],
-                        "position3": experiment['metadata']['conditions'],
+                        "position1": sample['metadata']['cells'],
+                        "position2": sample['metadata']['alias'],
+                        "position3": sample['metadata']['conditions'],
                         "visualPlugins": [
-                            { "pie": experiment['pie'] }
+                            { "pie": sample['pie'] }
                         ]
                     }
                 };
-                // experiment.biowardrobeRecord["new_sample"] = sample;
+                sample["new_sample"] = local_sample;
+
+                let fileIDes = [];
+
+                let getOpts = (sample, fileName?) => {
+                    return {
+                        meta: {
+                            projectId: sample['project']._id,
+                            userId: sample['userId'],
+                            isOutput: true
+                        },
+                        fileName,
+                        userId: sample['userId'],
+                        fileId: Random.id()
+                    };
+                };
+                
+                let updateFiles = (direction, local_sample) => {
+                    Object.keys(local_sample[direction]).forEach( output_key => {
+                        if (local_sample[direction][output_key] && local_sample[direction][output_key].class === 'File' ) {
+
+                            let opts = getOpts(sample, `${output_key}${local_sample[direction][output_key].nameext}`);
+                            FilesUpload.addFile(local_sample[direction][output_key].location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
+
+                            local_sample[direction][output_key]['_id'] = opts.fileId;
+                            fileIDes.push(opts.fileId);
+
+                            if (local_sample[direction][output_key].secondaryFiles) {
+                                local_sample[direction][output_key].secondaryFiles = local_sample[direction][output_key].secondaryFiles.map( (sf, index) => {
+                                    let opts = getOpts(sample, `${output_key}_${index}${sf.nameext}`);
+                                    FilesUpload.addFile(sf.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
+                                    sf['_id'] = opts.fileId;
+                                    fileIDes.push(opts.fileId);
+                                    return sf;
+                                });
+                            }
+
+                        } else if (local_sample[direction][output_key] && local_sample[direction][output_key].class === 'Directory') {
+
+                        }
+                    });
+                };
+
+                updateFiles('outputs', local_sample);
+                updateFiles('inputs', local_sample);
+
+                sample["new_sample_file_ides"] = fileIDes;
 
                 if (!Meteor.settings.rc_server) {
-                    return of(Samples.insert(sample));
+                    return of(Samples.insert(local_sample));
                 } else {
-                    return DDPConnection.call('satellite/projects/createSample', sample);
+                    return DDPConnection.call('satellite/projects/createSample', local_sample);
                 }
             }, (experiment, sampleId, outerIndex, innerIndex) => ({sampleId, experiment})),
 
-            reduce((acc, val) => {
-                Log.info(`Update sample: ${val.sampleId} `);
+            reduce((acc, {sampleId, experiment}) => {
+                Log.info(`Update sample: ${sampleId} `);
 
-                // Samples.update({ _id: val.sampleId }, val.experiment.new_sample, { upsert: true });
-                Samples.update({ _id: val.sampleId }, {
+                if (!experiment.sample.new_sample_file_ides) {
+                    Log.debug("new_sample_file_ides 2: ", experiment.sample);
+                } else {
+                    FilesUpload.collection.update(
+                        {_id: {$in: experiment.sample.new_sample_file_ides}},
+                        {$set: {"meta.sampleId": sampleId}});
+                }
+                Samples.update({ _id: sampleId }, experiment.sample.new_sample, { upsert: true });
+                Samples.update({ _id: sampleId }, {
                     $set: {
                         biowardrobe_import: {
-                            exp_id: val.experiment.sample.id,
-                            exp_uid: val.experiment.sample.uid,
-                            egroup_id: val.experiment.sample.egroup_id,
+                            exp_id: experiment.sample.id,
+                            exp_uid: experiment.sample.uid,
+                            egroup_id: experiment.sample.egroup_id,
                             synchronized: !!Meteor.settings.rc_server
                         }
                     }
                 }, {upsert: true});
-
-                let getOpts = (sample, sampleId, fileName?) => {
-                    let meta = {
-                        projectId: sample['project']._id,
-                        sampleId: sampleId,
-                        userId: sample['userId'],
-                        isOutput: true
-                    };
-                    return {meta, fileName, userId: sample['userId'], fileId: Random.id()};
-                };
-
-                const results = val.experiment.sample['outputs'];
-
-                for ( const output_key in results ) {
-                    if (results[output_key] && results[output_key].class === 'File' ) {
-
-                        let opts = getOpts(val.experiment.sample, val.sampleId, `${output_key}${results[output_key].nameext}`);
-                        FilesUpload.addFile(results[output_key].location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
-
-                        if (results[output_key].secondaryFiles) {
-                            results[output_key].secondaryFiles.forEach( (sf, index) => {
-                                let opts = getOpts(val.experiment.sample, val.sampleId, `${output_key}_${index}${sf.nameext}`);
-                                FilesUpload.addFile(sf.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
-                            })
-                        }
-                    } else if (results[output_key] && results[output_key].class === 'Directory') {
-
-                    }
-                }
-
+                
                 return {count: acc['count'] + 1, message: 'Samples finished'} as any;
             }, {count: 0, message: 'Samples finished'} as any),
             catchError((e) => of({error: true, message: `Samples import: ${e}`}))
