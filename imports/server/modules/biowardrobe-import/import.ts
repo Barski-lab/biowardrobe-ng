@@ -343,8 +343,19 @@ export class BioWardrobe {
                     let expParams = experiment['params'].replace(/http:\/\/commonwl\.org\/cwltool#generation|http:\\\/\\\/commonwl.org\\\/cwltool#generation/g, discardKey);
                     experiment['outputs'] = cleanCwlOutputs(JSON.parse(expParams), discardKey);
 
-                    const expProject = Projects.findOne({"biowardrobe_import.project_id": experiment.egroup_id});
-                    const expLaboratory = Labs.findOne({"biowardrobe_import.laboratory_id": experiment.laboratory_id});
+                    const expProject: any = Projects.findOne({"biowardrobe_import.project_id": experiment.egroup_id});
+                    if (!expProject || !expProject.labs) {
+                        excluded_laboratories[experiment.laboratory_id] = {egroup_id: experiment.egroup_id, laboratory_id: experiment.laboratory_id};
+                        return of(null);
+                    }
+                    const projLab = expProject.labs.find(l => l.main === true);
+                    if (!projLab ) {
+                        excluded_laboratories[experiment.laboratory_id] = {egroup_id: experiment.egroup_id, laboratory_id: experiment.laboratory_id};
+                        return of(null);
+                    }
+
+                    // const expLaboratory = Labs.findOne({"biowardrobe_import.laboratory_id": experiment.laboratory_id});
+                    const expLaboratory = Labs.findOne({"_id": projLab._id});
                     if (!expProject || !expLaboratory) {
                         excluded_laboratories[experiment.laboratory_id] = {egroup_id: experiment.egroup_id, laboratory_id: experiment.laboratory_id};
                         return of(null);
@@ -410,17 +421,18 @@ export class BioWardrobe {
                     }
 
                     const expUser = Meteor.users.findOne({'emails.address': experiment['email'].toLowerCase()});
-
                     if (expUser) {
                         experiment['author'] = `${expUser.profile.lastName}, ${expUser.profile.firstName}`;
-                        experiment['userId'] = expUser._id;
+                        // experiment['userId'] = expUser._id;
                     } else {
                         experiment['author'] = `${experiment['laboratory'].owner.lastName}, ${experiment['laboratory'].owner.firstName}`;
-                        if (!experiment['laboratory'].owner) {
-                            Log.error(experiment['laboratory']);
-                        }
-                        experiment['userId'] = experiment['laboratory'].owner._id;
                     }
+                    // Force experiment's user id to PI
+                    if (!experiment['laboratory'].owner) {
+                        Log.error(experiment['laboratory']);
+                    }
+                    experiment['userId'] = experiment['laboratory'].owner._id;
+
                     return of(experiment);
                 },
                 (biowardrobeRecord, sample, outerIndex, innerIndex) => ({ sample, biowardrobeRecord })),
