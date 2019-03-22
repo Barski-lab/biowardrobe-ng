@@ -6,3 +6,4 @@ export * from './airflow_queue';
 export * from './requests';
 export * from './samples';
 export * from './invoices';
+export * from './downloads';

@@ -32,6 +32,10 @@ export class DDPConnection {
     public get events$() {
         return this._main_events$; //.pipe(share());
     }
+    
+    public setEvent(event: any) {
+        this._main_events$.next(event);
+    }
 
     private _requests$: Subject<any> = new Subject<any>();
     public get requests$() {

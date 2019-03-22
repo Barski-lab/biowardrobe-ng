@@ -5,4 +5,3 @@ import './lib';
 import './samples';
 import './invoices';
 import './git';
-import './downloads';

@@ -19,6 +19,7 @@ import { FileData, FileObj, FilesCollection } from 'meteor/ostrio:files';
 import { FilesUpload, FileUploadCollection } from '../methods/filesupload';
 
 import { CWLCollection, Samples, airflowQueueCollection } from '../../collections/shared';
+import { allInputsExits } from './downloads'
 import { Log } from './logger';
 
 import * as path from 'path';
@@ -436,7 +437,6 @@ class AirflowProxy {
 export const airflowProxy = new AirflowProxy();
 
 Meteor.startup(() => {
-
     /**
      * Server startup
      * connect DDP master server and Airflow API
@@ -447,6 +447,7 @@ Meteor.startup(() => {
             tap(d => Log.debug("Events:", d)),
             // @ts-ignore
             filter(({name, event, id}) => name == 'samples' && ['added', 'changed'].includes(event)),
+            filter(({name, event, id}) => allInputsExits(id)),
             switchMap(({name, event, id}) => { // collection name, event {added, changed, removed}, id - sample id
                 return airflowProxy.cleanup_dag(id);
             }),
@@ -475,6 +476,8 @@ Meteor.startup(() => {
             catchError((e) => of({ error: true, message: `Error: ${e}` }))
         )
         .subscribe( (r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
-
+    
+    // For testing
+    // connection.setEvent({name: "samples", event: 'added', id: "nvYBtNTDTyetcKdBn"});
 
 });
