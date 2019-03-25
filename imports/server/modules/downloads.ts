@@ -79,12 +79,12 @@ class AriaDownload {
     };
 
     public checkInputs(sampleId: string): boolean {
-        let destinationDirectory = "/Users/kot4or/temp/del/temp";  // Should be set based on sampleId 
         let needDownload = false;
         let sample = Samples.findOne( {"_id": sampleId} );
         
         if (sample && sample["inputs"]) {
             const inputs = sample["inputs"];
+            let destinationDirectory = inputs["output_folder"] || "/tmp";
             for (const key in inputs) {
                 if (inputs[key] && inputs[key].class === 'File' && !inputs[key].location.startsWith("file://")) {
                     if (!Downloads.findOne( {"sampleId": sampleId, "inputKey": key} )){
