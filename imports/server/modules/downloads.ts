@@ -16,7 +16,7 @@ const path = require("path");
 
 class AriaDownload {
 
-    private _aria = new aria2([Meteor.settings.download["aria2"]]);
+    private _aria: any;
     private _downloadQueue = {};
 
     private _nextToDownload$: Subject<any> = new Subject<any>();
@@ -50,32 +50,39 @@ class AriaDownload {
     constructor() {
         let self = this;
 
-        Downloads.find( {"downloaded": false, $or: [{"error": null}, {"error": ""}]} )
-            .observeChanges({
-                added  (_id, data) { self._nextToDownload$.next( {_id, data} ) },
-                changed(_id, data) { self._nextToDownload$.next( {_id, data} ) }
-            });
+        if (Meteor.settings.download && Meteor.settings.download["aria2"]) {
 
-        self._openWebSocket()
-            .pipe(
-                tap( (w: any) => Log.debug("Open WebSocket to", w.target.url) ),
-                mergeMap( () => self._nextToDownload$.asObservable() ),
-                tap( ({_id, data}) => Log.debug("Update Downloads collection", _id, "\n", data) ),
-                mergeMap( ({_id, data}) => self._addDownload(data.uri, data.path).pipe(
-                                                map( (downloadId: string) => {
-                                                    data["_id"] = _id;
-                                                    return {data, downloadId}}))),
-                tap( ({data, downloadId}) => Log.debug("Schedule new download with downloadId", downloadId, "\n", data) ))
-            .subscribe(
-                ({data, downloadId}) => self._downloadQueue[downloadId] = data,
-                (err: any) => Log.error("Error encountered while scheduling new download", err))
-            
-        self._downloadComplete()
-            .pipe(
-                merge(self._downloadError()))
-            .subscribe(
-                Meteor.bindEnvironment( ({downloadId, error}) => error ? self._onDownloadError(downloadId) : self._onDownloadComplete(downloadId) ),
-                (err) => Log.error("Error encountered while processing results from scheduled download", err))
+            self._aria = new aria2([Meteor.settings.download["aria2"]]);
+
+            Downloads.find( {"downloaded": false, $or: [{"error": null}, {"error": ""}]} )
+                .observeChanges({
+                    added  (_id, data) { self._nextToDownload$.next( {_id, data} ) },
+                    changed(_id, data) { self._nextToDownload$.next( {_id, data} ) }
+                });
+
+            self._openWebSocket()
+                .pipe(
+                    tap( (w: any) => Log.debug("Open WebSocket to", w.target.url) ),
+                    mergeMap( () => self._nextToDownload$.asObservable() ),
+                    tap( ({_id, data}) => Log.debug("Update Downloads collection", _id, "\n", data) ),
+                    mergeMap( ({_id, data}) => self._addDownload(data.uri, data.path).pipe(
+                                                    map( (downloadId: string) => {
+                                                        data["_id"] = _id;
+                                                        return {data, downloadId}}))),
+                    tap( ({data, downloadId}) => Log.debug("Schedule new download with downloadId", downloadId, "\n", data) ))
+                .subscribe(
+                    ({data, downloadId}) => self._downloadQueue[downloadId] = data,
+                    (err: any) => Log.error("Error encountered while scheduling new download", err))
+                
+            self._downloadComplete()
+                .pipe(
+                    merge(self._downloadError()))
+                .subscribe(
+                    Meteor.bindEnvironment( ({downloadId, error}) => error ? self._onDownloadError(downloadId) : self._onDownloadComplete(downloadId) ),
+                    (err) => Log.error("Error encountered while processing results from scheduled download", err))
+
+        }
+
     };
 
     public checkInputs(sampleId: string): boolean {

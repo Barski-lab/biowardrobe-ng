@@ -69,3 +69,25 @@
         "account": ""
       }
    ```
+
+## BioWardrobe-NG Aria2
+
+1. Read `Aria2` configuration from `download["aria2"]` field of `settings.json` configuration file. If absent, `Aria2` won't be used. Set additional security options if necessary.
+
+   ```yaml
+      "download": {
+        "aria2": {
+          "host": "localhost",
+          "port": 6800,
+          "secure": false,
+          "secret": "",
+          "path": "/jsonrpc"
+        }
+      }
+  ```
+
+2. Run Aria2 server following the example. Set additional security options if necessary.
+
+  ```bash
+  aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800
+  ```
