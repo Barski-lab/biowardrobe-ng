@@ -84,10 +84,10 @@
           "path": "/jsonrpc"
         }
       }
-  ```
+    ```
 
-2. Run Aria2 server following the example. Set additional security options if necessary.
+2. Run `Aria2` server following the example. Set additional security options if necessary.
 
-  ```bash
-  aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800
-  ```
+   ```bash
+      aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800
+   ```
