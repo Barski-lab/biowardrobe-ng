@@ -1,31 +1,93 @@
 import { Meteor } from 'meteor/meteor';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { fromEvent } from 'rxjs/observable/fromEvent';
+import { fromPromise } from 'rxjs/observable/fromPromise';
+import { tap, map, merge, mergeMap } from 'rxjs/operators';
 
 import { Downloads, Samples } from '../../collections/shared';
-import { connection } from './ddpconnection';
 import { Log } from './logger';
 
-const Aria2 = require("aria2");
+const aria2 = require("aria2");
 const path = require("path");
-const fs = require("fs");
 
 // For testing:
 // Listen only on localhost:6800, no encryion enabled, no secret token
 // aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800
 
-export function allInputsExits(sampleId: string) {
-    let destinationDirectory = "/Users/kot4or/temp/del/temp";  // Should be set based on sampleId 
-    let needDownload = false;
-    let sample = Samples.findOne({"_id": sampleId});
-    
-    if (sample && sample["inputs"]) {
-        const inputs = sample["inputs"];
-        for (const key in inputs) {
-            if (inputs[key] && inputs[key].class === 'File' ) {
-                let location = inputs[key].location;
-                if (!location.startsWith("file://")){
-                    let activeDownload = Downloads.findOne({"sampleId": sampleId, "inputKey": key});
-                    if (!activeDownload){
+class AriaDownload {
+
+    private _aria = new aria2([Meteor.settings.download["aria2"]]);
+    private _downloadQueue = {};
+
+    private _nextToDownload$: Subject<any> = new Subject<any>();
+    private _events$: Subject<any> = new Subject<any>();
+    public get events$() {
+        return this._events$;
+    }
+
+    private _openWebSocket(): Observable<any> {
+        return fromPromise(this._aria.open())
+    };
+
+    private _downloadComplete(): Observable<any> {
+        return fromEvent(this._aria, "onDownloadComplete").pipe(
+            map( (r: any) => {
+                return {"downloadId": r[0].gid}
+            }))
+    };
+
+    private _downloadError(): Observable<any> {
+        return fromEvent(this._aria, "onDownloadError").pipe(
+            map( (r: any) => {
+                return {"downloadId": r[0].gid, "error": "Download failed"}
+            }))
+    };
+
+    private _addDownload(downloadUri: any, destinationPath: any): Observable<any> {
+        return fromPromise(this._aria.call("addUri", [downloadUri], {"dir": path.dirname(destinationPath), "out": path.basename(destinationPath)}))
+    }
+
+    constructor() {
+        let self = this;
+
+        Downloads.find( {"downloaded": false, $or: [{"error": null}, {"error": ""}]} )
+            .observeChanges({
+                added  (_id, data) { self._nextToDownload$.next( {_id, data} ) },
+                changed(_id, data) { self._nextToDownload$.next( {_id, data} ) }
+            });
+
+        self._openWebSocket()
+            .pipe(
+                tap( (w: any) => Log.debug("Open WebSocket to", w.target.url) ),
+                mergeMap( () => self._nextToDownload$.asObservable() ),
+                tap( ({_id, data}) => Log.debug("Update Downloads collection", _id, "\n", data) ),
+                mergeMap( ({_id, data}) => self._addDownload(data.uri, data.path).pipe(
+                                                map( (downloadId: string) => {
+                                                    data["_id"] = _id;
+                                                    return {data, downloadId}}))),
+                tap( ({data, downloadId}) => Log.debug("Schedule new download with downloadId", downloadId, "\n", data) ))
+            .subscribe(
+                ({data, downloadId}) => self._downloadQueue[downloadId] = data,
+                (err: any) => Log.error("Error encountered while scheduling new download", err))
+            
+        self._downloadComplete()
+            .pipe(
+                merge(self._downloadError()))
+            .subscribe(
+                Meteor.bindEnvironment( ({downloadId, error}) => error ? self._onDownloadError(downloadId) : self._onDownloadComplete(downloadId) ),
+                (err) => Log.error("Error encountered while processing results from scheduled download", err))
+    };
+
+    public checkInputs(sampleId: string): boolean {
+        let destinationDirectory = "/Users/kot4or/temp/del/temp";  // Should be set based on sampleId 
+        let needDownload = false;
+        let sample = Samples.findOne( {"_id": sampleId} );
+        
+        if (sample && sample["inputs"]) {
+            const inputs = sample["inputs"];
+            for (const key in inputs) {
+                if (inputs[key] && inputs[key].class === 'File' && !inputs[key].location.startsWith("file://")) {
+                    if (!Downloads.findOne( {"sampleId": sampleId, "inputKey": key} )){
                         Downloads.insert({
                             "uri": inputs[key].location,                   
                             "path": path.resolve("/", destinationDirectory, inputs[key].location.split("/").slice(-1)[0]),        
@@ -35,118 +97,38 @@ export function allInputsExits(sampleId: string) {
                         });
                     }
                     needDownload = true;
-                } else if (!fs.existsSync(location.replace('file://',''))) {
-                    throw new Error(`Missing local file ${location}`);
                 }
             }
         }
-    }
-    return !needDownload;
-}
-
-
-function onAddDownloads (id: string, doc: any) {
-    ariaDownload.addUri(doc.uri, doc.path)
-        .subscribe(
-            (gid: string) => {
-                doc["_id"] = id;
-                downloadList[gid] = doc;
-                Log.debug("Schedule download for the file", doc.fileId, "from", doc.uri, "with download ID", gid)
-            },
-            (err) => {
-                Log.debug("Failed to schedule download for the file", doc.fileId, "from", doc.uri, "\n", err)
-            });
-}
-
-
-function onDownloadComplete (downloadId: string) {
-    let doc = downloadList[downloadId];
-    if (doc) {
-        Log.debug("Found completed download\n", doc);
-        Downloads.update({"_id": doc._id}, {$set: {"downloaded": true}});
-        delete downloadList[downloadId];
-
-        let updates = {};
-        updates["inputs." + doc.inputKey + ".location"] = "file://" + doc.path;
-        Samples.update({"_id": doc.sampleId}, {$set: updates});
-
-        connection.setEvent({name: "samples", event: 'changed', id: doc.sampleId});
-    }
-}
-
-
-function onDownloadError (downloadId: string) {
-    let doc = downloadList[downloadId];
-    if (doc) {
-        Log.debug("Found failed download\n", doc);
-        Downloads.update({"_id": doc._id}, {$set: {error: "Failed to download"}});
-        delete downloadList[downloadId];
-    }
-}
-
-
-class AriaDownload {
-
-    private _ariaCli: any;
-    private _default = {
-        host: 'localhost',
-        port: 6800,
-        secure: false,
-        secret: '',
-        path: '/jsonrpc'
-    };
-
-    constructor(settings?: any) {
-        this._ariaCli = new Aria2([settings || (!!Meteor.settings.download && Meteor.settings.download["aria2"]) || this._default]);
-    };
-
-    /**
-     * The JSON-RPC interface does not support notifications over HTTP,
-     * but the RPC server will send notifications over WebSocket.
-     * So use openWebSocketConnection() if you want to reveive notifications
-     */
-    downloadStart ()      { return Observable.fromEvent(this._ariaCli, "onDownloadStart") }       // return array, why?
-    downloadPause ()      { return Observable.fromEvent(this._ariaCli, "onDownloadPause") }       // return array, why?
-    downloadStop ()       { return Observable.fromEvent(this._ariaCli, "onDownloadStop") }        // return array, why?
-    downloadComplete ()   { return Observable.fromEvent(this._ariaCli, "onDownloadComplete") }    // return array, why?
-    downloadError ()      { return Observable.fromEvent(this._ariaCli, "onDownloadError") }       // return array, why?
-    btDownloadComplete () { return Observable.fromEvent(this._ariaCli, "onBtDownloadComplete") }  // return array, why?
-    
-    openWebSocketConnection() {
-        return Observable.fromPromise(this._ariaCli.open())
+        return !needDownload;
     }
 
-    closeWebSocketConnection() {
-        return Observable.fromPromise(this._ariaCli.close())
-    }
-    
-    addUri(downloadUri: any, destinationPath: any) {
-        Log.debug("Trying to download file from", downloadUri, "to", destinationPath);
-        return Observable.fromPromise(this._ariaCli.call("addUri", [downloadUri], {"dir": path.dirname(destinationPath), "out": path.basename(destinationPath)}))
-    }
-    
-}
-
-
-let downloadList = {}
-let ariaDownload = null;
-
-
-Meteor.startup(() => {
-
-    if (Meteor.settings.download && Meteor.settings.download["aria2"]) {
-        ariaDownload = new AriaDownload();
-        ariaDownload.openWebSocketConnection().subscribe(
-            (res: any) => {
-                Log.debug("Open WebSocket connection", res.target.url);
-                Downloads.find({"downloaded": false, $or: [{"error": null}, {"error": ""}]}).observeChanges({added: onAddDownloads, changed: onAddDownloads});
-                ariaDownload.downloadComplete().subscribe(Meteor.bindEnvironment((res: any) => onDownloadComplete(res[0].gid)));
-                ariaDownload.downloadError().subscribe(Meteor.bindEnvironment((res: any) => onDownloadError(res[0].gid)));
-            },
-            (err: any) => {
-                Log.debug("Failed to open WebSocket connection\n", err)
+    private _onDownloadComplete (downloadId: string) {
+        let doc = this._downloadQueue[downloadId];
+        if (doc) {
+            Log.debug("Success download", downloadId, "\n", doc);
+            Downloads.update( {"_id": doc._id}, {$set: {"downloaded": true}} );
+            delete this._downloadQueue[downloadId];
+            let updates = {};
+            updates["inputs." + doc.inputKey + ".location"] = "file://" + doc.path;
+            Samples.update({"_id": doc.sampleId}, {$set: updates});
+            if (this.checkInputs(doc.sampleId)){
+                this._events$.next( {"sampleId": doc.sampleId} );
             }
-        )
+        }
+    }
+    
+    private _onDownloadError (downloadId: string) {
+        let doc = this._downloadQueue[downloadId];
+        if (doc) {
+            Log.debug("Failed download", downloadId, "\n", doc);
+            let errorMsg = "Failed to download " + doc.uri + ", downloadId: " + downloadId;
+            Downloads.update({"_id": doc._id}, {$set: {"error": errorMsg}});
+            delete this._downloadQueue[downloadId];
+            this._events$.next( {"sampleId": doc.sampleId, "error": errorMsg} );
+        }
     }
 
-});
+}
+
+export const ariaDownload = new AriaDownload();

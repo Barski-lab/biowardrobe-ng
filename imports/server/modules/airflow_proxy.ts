@@ -19,7 +19,7 @@ import { FileData, FileObj, FilesCollection } from 'meteor/ostrio:files';
 import { FilesUpload, FileUploadCollection } from '../methods/filesupload';
 
 import { CWLCollection, Samples, airflowQueueCollection } from '../../collections/shared';
-import { allInputsExits } from './downloads'
+import { ariaDownload } from './downloads'
 import { Log } from './logger';
 
 import * as path from 'path';
@@ -432,6 +432,31 @@ class AirflowProxy {
                 catchError((e) => of({ error: true, message: `Error: ${e}` }))
             )
     }
+
+    public after_cleanup_dag_routine( {result, error, message, sample} ): Observable<any> {
+        let progress: any = null;
+        if (error) {
+            Log.error("Cleanup:", message);
+            progress = {
+                title: "Error",
+                progress: 0,
+                error: message
+            }
+        } else if (result) {
+            Log.debug("Cleanup:", result);
+            progress = {
+                title: "Cleaning",
+                progress: 0
+            }
+        }
+        if (progress && sample) {
+            return AirflowProxy.master_progress_update(sample._id, {progress} as any)
+        } else {
+            throw new Error(`No sample ${progress}`);
+        }
+    }
+
+
 }
 
 export const airflowProxy = new AirflowProxy();
@@ -440,44 +465,41 @@ Meteor.startup(() => {
     /**
      * Server startup
      * connect DDP master server and Airflow API
-     * $events are master's samples updated
+     * connection.$events are master's samples updated
+     * ariaDownload.events$ are emitted when sample's inputs download has completed with success or error
      */
+
     connection.events$
         .pipe(
-            tap(d => Log.debug("Events:", d)),
+            tap(d => Log.debug("Connection Events:", d)),
             // @ts-ignore
             filter(({name, event, id}) => name == 'samples' && ['added', 'changed'].includes(event)),
-            filter(({name, event, id}) => allInputsExits(id)),
+            filter(({name, event, id}) => ariaDownload.checkInputs(id)),
             switchMap(({name, event, id}) => { // collection name, event {added, changed, removed}, id - sample id
                 return airflowProxy.cleanup_dag(id);
             }),
             mergeMap( ({result, error, message, sample}) => {
-                let progress: any = null;
-                if (error) {
-                    Log.error("Cleanup:", message);
-                    progress = {
-                        title: "Error",
-                        progress: 0,
-                        error: message
-                    }
-                } else if (result) {
-                    Log.debug("Cleanup:", result);
-                    progress = {
-                        title: "Cleaning",
-                        progress: 0
-                    }
-                }
-                if (progress && sample) {
-                    return AirflowProxy.master_progress_update(sample._id, {progress} as any)
-                } else {
-                    throw new Error(`No sample ${progress}`);
-                }
+                return airflowProxy.after_cleanup_dag_routine({result, error, message, sample});
             }),
             catchError((e) => of({ error: true, message: `Error: ${e}` }))
         )
         .subscribe( (r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
-    
+
+    ariaDownload.events$
+        .pipe(
+            tap(d => Log.debug("aria2 download Event:", d)),
+            filter(({sampleId, error}) => !error),
+            switchMap(({sampleId, error}) => {
+                return airflowProxy.cleanup_dag(sampleId);
+            }),
+            mergeMap( ({result, error, message, sample}) => {
+                return airflowProxy.after_cleanup_dag_routine({result, error, message, sample});
+            }),
+            catchError((e) => of({ error: true, message: `Error: ${e}` }))
+        )
+        .subscribe( (r: any) => r && r.error ? Log.error(r) : Log.debug(r) );       
+
     // For testing
-    // connection.setEvent({name: "samples", event: 'added', id: "nvYBtNTDTyetcKdBn"});
+    // connection._main_events$.next({name: "samples", event: 'added', id: "nvYBtNTDTyetcKdBn"});
 
 });
