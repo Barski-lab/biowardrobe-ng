@@ -12,7 +12,7 @@ const fs = require('fs');
 
 export class WorkflowsGitFetcher {
 
-    static async getWorkflows(gitURL, gitPath, gitBranch="master", workflowsDir="/workflows") {
+    static async getWorkflows(gitURL, gitPath, gitBranch="master", workflowsDir="workflows") {
 
         let defaultRemoteName = "origin";
 

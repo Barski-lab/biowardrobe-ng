@@ -244,8 +244,14 @@ export class BioWardrobe {
                     }
                 }
                 if(labs.length > 0) {
-                    return DDPConnection.call('satellite/projects/shares',
-                        project._id, labs);
+                    if (!Meteor.settings.rc_server) {
+                        project.labs.push( {"_id": lab._id, "name": lab.name, "main": false} )
+                        Projects.update({_id: project._id}, {$set: {"labs": project.labs,  "modified": Date.now() / 1000.0}});
+                        Log.debug("Share project", project._id, "with the lab", lab._id);
+                        return of("Ok");
+                    } else {
+                        return DDPConnection.call('satellite/projects/shares', project._id, labs);
+                    }
                 }
                 return of(null);
             }),
