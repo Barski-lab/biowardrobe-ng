@@ -67,6 +67,19 @@
         "account": ""
       }
    ```
+2. Invoices are accessible only for admins. To add admin permissions to a specific user, use the following command
+
+   ```bash
+      db.users.update({_id: "UNIQUE_USER_ID"}, {$addToSet: {"roles.__global_roles__":"admin"}})
+   ```
+   The results should look similar to this
+   ```yaml
+      "roles": {
+          "__global_roles__": [
+              "admin"
+          ]
+      }
+   ```
 
 ## BioWardrobe-NG Aria2
 
