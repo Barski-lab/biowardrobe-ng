@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 
 import { AuthRouting } from './auth.routing';
 import { BWAuthComponentsModule } from './components/bwauthcomponents.module';
-import { BWDirectivesModule, BWAccountService, LoggedInGuard } from '../lib';
+import { BWDirectivesModule, BWAccountService, LoggedInGuard, LoggedInAdminGuard } from '../lib';
 
 import { BWLogin }    from './login/login';
 import { BWLogout }   from './logout/logout';
@@ -47,7 +47,7 @@ export class AuthModule {
     static forRoot(): ModuleWithProviders {
         return {
             ngModule: AuthModule,
-            providers: [BWAccountService, LoggedInGuard]
+            providers: [BWAccountService, LoggedInGuard, LoggedInAdminGuard]
         }
     }
 }
