@@ -206,6 +206,7 @@ class PostFormModule implements BaseModuleInterface {
                     data["list"] = {
                         path: '/',
                         files: filesWithSession.files,
+                        links: filesWithSession.links,
                         folders: []
                     };
                     data["session"] = filesWithSession.cookies.cookies.find( cookiesObject => {return cookiesObject.key == "PHPSESSID"}).value;
@@ -217,6 +218,7 @@ class PostFormModule implements BaseModuleInterface {
                     data["list"] = {
                         path: '/',
                         files: [],
+                        links: [],
                         folders: []
                     };
                     data["session"] = null;
@@ -296,6 +298,7 @@ class PostFormModule implements BaseModuleInterface {
      */
     private formFileList (rawDataWithSession) {
         let fileList = [];
+        let fileLinks = [];
         let insideListSection = false;
 
         let parser = new htmlparser.Parser({
@@ -309,15 +312,16 @@ class PostFormModule implements BaseModuleInterface {
 
                         let startPath = attribs.href.indexOf("('");
                         let stopPath = attribs.href.indexOf("',");
-                        // let fpath = attribs.href.substring(startPath+2, stopPath);
+                        let fpath = attribs.href.substring(startPath+2, stopPath);
 
                         let startName = attribs.href.indexOf(", '");
                         let stopName = attribs.href.indexOf("')");
                         let fname = attribs.href.substring(startName+3, stopName);
 
-                        // let link = this._info.downloadUrl + '?file=' + fpath + '&name=' + fname;
+                        let link = this._info.downloadUrl + '?file=' + fpath;
                         if (/fastq/.test(fname)){
-                            fileList.push (fname)
+                            fileList.push (fname);
+                            fileLinks.push(link)
                         }
                     }
                 }
@@ -335,9 +339,16 @@ class PostFormModule implements BaseModuleInterface {
         parser.end();
 
         // Log.debug("formFileList success");
-        return Promise.resolve({files: fileList, cookies: rawDataWithSession.cookies._jar.toJSON()});
+        return Promise.resolve({files: fileList, links: fileLinks, cookies: rawDataWithSession.cookies._jar.toJSON()});
     }
 
+    public getFile(fileUrl: any, userId: any) {
+        let basename = path.basename(fileUrl.path);
+        let data = ModuleCollection.findOne( { "userId": userId, "list.files":  basename } );
+        return { "url": data.list.links[data.list.files.indexOf(basename)], 
+                 "basename": basename,
+                 "header": `Cookie:session=${data.session}`}
+    }
 
     getInfo () {
         return {

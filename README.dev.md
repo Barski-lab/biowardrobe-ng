@@ -100,5 +100,14 @@
 2. Run `Aria2` server following the example. Set additional security options if necessary.
 
    ```bash
-      aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800
+      aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800 --console-log-level=debug
    ```
+3. To download data from `dna.cchmc.org` file input should look the following way
+   ```yaml
+        "fastq_file": {
+            "class": "File",
+            "location": "core:///input.fastq.gz",
+            "format": "http://edamontology.org/format_1930"
+        },
+   ```
+   Make sure to set protocol to `core:` for the remote module to process the download (in `settings.json`). Additionally, all the required URLs for this specific module should be properly configured.
