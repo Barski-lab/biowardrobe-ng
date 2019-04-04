@@ -48,7 +48,7 @@ export class BWLogin extends BWComponentBase implements OnInit {
                 return this._accounts.account$;
             })
         ).subscribe( (c) => {
-            console.log(c, c.isLoggedIn);
+            // console.log(c, c.isLoggedIn);
             if (c.isLoggedIn) {
                 if(this.params && this.params.client_id) {
                     let { client_id, redirect_uri, state } =  this.params;
