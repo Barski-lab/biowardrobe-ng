@@ -8,3 +8,4 @@ import './data_proxy';
 import './ddpconnection';
 import './ldap';
 import './logger';
+import './downloads';

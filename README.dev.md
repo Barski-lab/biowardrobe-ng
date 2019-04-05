@@ -35,26 +35,24 @@
         "git": {
           "path":         String,  # Absolute path to the cloned repository
           "url":          String,  # URL to remote
-          "branch":       String,  # Branch to work with
-          "workflowsDir": String   # Relative path to the folder with workflows (relative to the repository's root)
         }
         ```
     - Try to clone repository from `git.url`
     - If clonning failed, open local repository from `git.path`
     - Fetch changes from the remote `origin` (currently harcoded [here](https://github.com/Barski-lab/biowardrobe-ng/blob/6fa9ab80999ee5920d2c275e30827d07e3281307/imports/server/methods/git.ts#L17))
-    - Merge fetched changes into `git.branch`
-    - Get latest commit from `git.branch`
-    - Get file list from `git.workflowsDir`
+    - Merge fetched changes into the `master` branch
+    - Get latest commit from the `master` branch
+    - Get file list from `workflows` directory
     - For each workflow file:
         - Pack workflow and all dependencies into a single file
         - Upsert document in `CWL` collection (update if the document with the relative path the the workflow file and remote URL from where it was fetched already exist in the collection)
         - Read `airflow` object from `settings.json`
         ```yaml
           "airflow":{
-            "dagFolder": String  # From this folder Airflow loads DAGs
+            "dags_folder": String  # From this folder Airflow loads DAGs
           }
         ```
-        - Export `*.cwl` and correspondent `*.py` file into `airflow.dagFolder`
+        - Export `*.cwl` and correspondent `*.py` file into `airflow.dags_folder`
 
 ## BioWardrobe-NG invoice generation
 
@@ -69,3 +67,47 @@
         "account": ""
       }
    ```
+2. Invoices are accessible only for admins. To add admin permissions to a specific user, use the following command
+
+   ```bash
+      db.users.update({_id: "UNIQUE_USER_ID"}, {$addToSet: {"roles.__global_roles__":"admin"}})
+   ```
+   The results should look similar to this
+   ```yaml
+      "roles": {
+          "__global_roles__": [
+              "admin"
+          ]
+      }
+   ```
+
+## BioWardrobe-NG Aria2
+
+1. Read `Aria2` configuration from `download["aria2"]` field of `settings.json` configuration file. If absent, `Aria2` won't be used. Set additional security options if necessary.
+
+   ```yaml
+      "download": {
+        "aria2": {
+          "host": "localhost",
+          "port": 6800,
+          "secure": false,
+          "secret": "",
+          "path": "/jsonrpc"
+        }
+      }
+    ```
+
+2. Run `Aria2` server following the example. Set additional security options if necessary.
+
+   ```bash
+      aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800 --console-log-level=debug
+   ```
+3. To download data from `dna.cchmc.org` file input should look the following way
+   ```yaml
+        "fastq_file": {
+            "class": "File",
+            "location": "core:///input.fastq.gz",
+            "format": "http://edamontology.org/format_1930"
+        },
+   ```
+   Make sure to set protocol to `core:` for the remote module to process the download (in `settings.json`). Additionally, all the required URLs for this specific module should be properly configured.

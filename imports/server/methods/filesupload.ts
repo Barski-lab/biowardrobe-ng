@@ -237,13 +237,27 @@ Meteor.startup(() => {
 
 
 Meteor.methods({
-    'file/remove' (id) {
-        // TODO: do not delete if a real file (not drafts) ?
+    'file/remove' (id: any, token: any) {
         Log.debug('file/remove', id, this.userId);
         if (! this.userId) {
             throw new Meteor.Error(403, "Forbidden!");
         }
         check(id, String);
+        check(token, String);
+
+        let verifyOptions = {
+            subject: "delete",
+            expiresIn: '2h',
+            algorithm: ["ES512"]
+        };
+
+        try {
+            jwt.verify(token, connection.server_public_key, verifyOptions);
+        } catch (err) {
+            Log.error(err);
+            throw new Meteor.Error(500, err);
+        }
+
         let fileObj = FilesUpload.findOne({_id: id});
 
         if (! fileObj ) {
