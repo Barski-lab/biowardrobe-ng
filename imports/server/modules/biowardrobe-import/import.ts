@@ -527,7 +527,7 @@ export class BioWardrobe {
                 } else {
                     FilesUpload.collection.update(
                         {_id: {$in: experiment.sample.new_sample_file_ides}},
-                        {$set: {"meta.sampleId": sampleId}});
+                        {$set: {"meta.sampleId": sampleId}}, {multi: true});
                 }
                 Samples.update({ _id: sampleId }, experiment.sample.new_sample, { upsert: true });
                 Samples.update({ _id: sampleId }, {

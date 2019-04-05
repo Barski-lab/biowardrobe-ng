@@ -218,8 +218,17 @@ export const FilesUpload = new FilesCollection({
 
 });
 
-Meteor.publish('raw_data_files', function () {
-    return FilesUpload.find().cursor;
+Meteor.publish('raw_data_files', function ({sampleId, projectId}) {
+    Log.debug('publish raw_data_files: ', sampleId, projectId);
+    if(sampleId) {
+        check(sampleId, String);
+        return FilesUpload.find({"meta.sampleId": sampleId}).cursor;
+    } else if(projectId) {
+        check(projectId, String);
+        return FilesUpload.find({"meta.projectId": projectId}).cursor;
+    } else {
+        return this.ready();
+    }
 });
 
 Meteor.startup(() => {
