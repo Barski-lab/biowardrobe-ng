@@ -11,22 +11,18 @@ import {
     mergeMap, reduce
 } from 'rxjs/operators';
 import { Observable } from 'rxjs';
-import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
 import { of } from 'rxjs/observable/of';
 
-import { FilesUpload, FileUploadCollection } from '../methods/filesupload';
+import { FilesUpload } from '../methods/filesupload';
 
 import * as csv from 'fast-csv'; // 'fast-csv'; // 'csv-parser';
 import * as fs from 'fs';
 
-import { CWLCollection, Samples, airflowQueueCollection } from '../../collections/shared';
 import { Log } from './logger';
 
-type Options = {
-    highWaterMark: number,
-    encoding: string,
-}
-
+/**
+ * Works with RC Server requests, sends data back
+ */
 class DataProxy {
 
     constructor () {

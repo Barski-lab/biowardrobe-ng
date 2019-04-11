@@ -60,8 +60,7 @@ Meteor.startup(() => {
 
     configAccounts();
     setExtraUsers();
-
-
+    
 });
 
 

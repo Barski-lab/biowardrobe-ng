@@ -1,4 +1,3 @@
-import './biowardrobe-import/import';
 import './oauth';
 import './remotes';
 
