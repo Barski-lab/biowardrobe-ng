@@ -148,7 +148,8 @@ class AirflowProxy {
     }
 
     /**
-     * Triggers Airflow's DAG by queue id
+     * Triggers Airflow's DAG by queue id,
+     * It deletes files that are marked as isOutput in filecollection
      * Finds sample and corresponding CWL (FIXME: airflow has to kill by run_id)
      *
      * @param queue_id

@@ -474,24 +474,36 @@ export class BioWardrobe {
 
                 let fileIDes = [];
 
-                let getOpts = (sample, fileName?) => {
-                    return {
-                        meta: {
-                            projectId: sample['project']._id,
-                            userId: sample['userId'],
-                            isOutput: true
-                        },
-                        fileName,
-                        userId: sample['userId'],
-                        fileId: Random.id()
-                    };
-                };
 
                 let updateFiles = (direction, local_sample) => {
+                    /*
+                        Ostrio files collection default SciDAP options
+                     */
+                    const getFileOpts = (sample, direction, fileName) => {
+                        return {
+                            meta: {
+                                projectId: sample['project']._id,
+                                userId: sample['userId'],
+                                isOutput: direction === 'outputs'
+                            },
+                            fileName,
+                            userId: sample['userId'],
+                            fileId: Random.id()
+                        };
+                    };
+
                     Object.keys(local_sample[direction]).forEach( output_key => {
                         if (local_sample[direction][output_key] && local_sample[direction][output_key].class === 'File' ) {
+                            let fileName = "";
 
-                            let opts = getOpts(sample, `${output_key}${local_sample[direction][output_key].nameext}`);
+                            if(direction === 'inputs') {
+                                if(sample['url']) {
+                                    if (sample['url'].includes('/')) {
+
+                                    }
+                                }
+                            }
+                            let opts = getFileOpts(sample, direction,`${output_key}${local_sample[direction][output_key].nameext}`);
                             FilesUpload.addFile(local_sample[direction][output_key].location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
 
                             local_sample[direction][output_key]['_id'] = opts.fileId;
@@ -499,7 +511,7 @@ export class BioWardrobe {
 
                             if (local_sample[direction][output_key].secondaryFiles) {
                                 local_sample[direction][output_key].secondaryFiles = local_sample[direction][output_key].secondaryFiles.map( (sf, index) => {
-                                    let opts = getOpts(sample, `${output_key}_${index}${sf.nameext}`);
+                                    opts = getFileOpts(sample, direction, `${output_key}_${index}${sf.nameext}`);
                                     FilesUpload.addFile(sf.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
                                     sf['_id'] = opts.fileId;
                                     fileIDes.push(opts.fileId);
