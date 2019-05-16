@@ -141,8 +141,10 @@ export class AirflowProxy {
         }
 
         let queue_id = airflowQueueCollection.insert({sample_id});
+        let remove_dag_id = sample["dag_id"] || dag_id;
+        Samples.update({"_id": sample_id}, {$unset: {"dag_id": ""}});
 
-        const data = {run_id: queue_id, conf: JSON.stringify({remove_dag_id: dag_id, remove_run_id: sample_id}) };
+        const data = {run_id: queue_id, conf: JSON.stringify({remove_dag_id: remove_dag_id, remove_run_id: sample_id}) };
 
         return AirflowProxy.airflow_post('clean_dag_run', data, sample);
     }
@@ -179,8 +181,18 @@ export class AirflowProxy {
             return of({ error: true, message: `Project is not for analysis yet ${sample_id}`});
         }
 
-        // Do not run this in test will delete local files!!!
-        FilesUpload.remove({"meta.isOutput": true, "meta.sampleId": sample._id}, (err) => err?Log.error(err): "" );
+        const target_dir = path.resolve("/", Meteor.settings['systemRoot'], 'projects', sample['project']._id, 'inputs')
+        let allow_delete = true;
+        for (const k in sample.inputs){
+            if (k.includes("fastq") && path.dirname(sample.inputs[k].location) !== target_dir){
+                allow_delete = false;
+            }
+        }
+
+        if (allow_delete){
+            // Do not run this in test will delete local files!!!
+            FilesUpload.remove({"meta.isOutput": true, "meta.sampleId": sample._id}, (err) => err?Log.error(err): "" );
+        }
 
         let cwl: any = CWLCollection.findOne({_id: sample.cwlId});
         if (!cwl) {
@@ -196,6 +208,8 @@ export class AirflowProxy {
         };
 
         let dag_id = `${cwl._id}-${cwl.git.sha}`; // path.basename(cwl.git.path, ".cwl");
+        
+        Samples.update({"_id": sample_id}, {$set: {"dag_id": dag_id}});
 
         /**
          * DAG name can be changed in the future
