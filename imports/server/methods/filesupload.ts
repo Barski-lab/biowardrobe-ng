@@ -218,9 +218,12 @@ export const FilesUpload = new FilesCollection({
 
 });
 
-Meteor.publish('raw_data_files', function ({sampleId, projectId}) {
+Meteor.publish('raw_data_files', function ({sampleId, projectId, fileIdes}) {
     Log.debug('publish raw_data_files: ', sampleId, projectId);
-    if(sampleId) {
+    if(fileIdes && Array.isArray(fileIdes)) {
+        check(fileIdes, [String]);
+        return FilesUpload.find({"_id": {$in: fileIdes}}).cursor;
+    } else if(sampleId) {
         check(sampleId, String);
         return FilesUpload.find({"meta.sampleId": sampleId}).cursor;
     } else if(projectId) {
@@ -238,6 +241,7 @@ Meteor.startup(() => {
 
 Meteor.methods({
     'file/remove' (id: any, token: any) {
+        // FIXME: fileId has to be from the token!!!
         Log.debug('file/remove', id, this.userId);
         if (! this.userId) {
             throw new Meteor.Error(403, "Forbidden!");

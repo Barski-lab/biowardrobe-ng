@@ -6,7 +6,7 @@ import { safeLoad } from 'js-yaml';
 import { Log } from '../modules/logger';
 import { CWLCollection } from '../../collections/shared';
 
-const nodegit = require("nodegit");
+const nodegit = {}; // require("nodegit");
 const path = require("path");
 const fs = require('fs');
 

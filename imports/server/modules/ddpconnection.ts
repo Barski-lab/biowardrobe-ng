@@ -218,17 +218,17 @@ export class DDPConnection {
             _callbacks = {
                 added(id, fields) {
                     Log.debug(`${_remote_collection_name}/added:`, id, Object.keys(fields));
-                    self._main_events$.next({name: _remote_collection_name, event: 'added', id: id});
                     if (_collection) {
                         _collection.update({_id: id}, {$set: fields}, {upsert: true});
                     }
+                    self._main_events$.next({name: _remote_collection_name, event: 'added', id: id});
                 },
                 changed(id, fields) {
                     Log.debug(`${_remote_collection_name}/changed:`, id, Object.keys(fields));
-                    self._main_events$.next({name: _remote_collection_name, event: 'changed', id: id});
                     if (_collection) {
                         _collection.update({_id: id}, {$set: fields}, {upsert: true});
                     }
+                    self._main_events$.next({name: _remote_collection_name, event: 'changed', id: id});
                 },
                 removed(id) {
                     Log.debug(`${_remote_collection_name}/removed:`, id);

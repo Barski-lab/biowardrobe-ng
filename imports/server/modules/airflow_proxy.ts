@@ -28,7 +28,7 @@ import * as bodyParser from 'body-parser';
 import * as zlib from 'zlib';
 import {WorkflowsGitFetcher} from '../methods/git';
 
-class AirflowProxy {
+export class AirflowProxy {
 
     private app:any = undefined;
     private routes = undefined;
@@ -188,14 +188,10 @@ class AirflowProxy {
             return of({ error: true, message: `no cwl ${sample.cwlId}`, sample: sample });
         }
 
-        //TODO: Parse CWL and check files input are ready!
-        const _mp = path.resolve("/", `${sample.projectId}/${sample_id}/`).slice(1);
-        const sample_path = path.resolve(`${Meteor.settings['systemRoot']}/projects/${_mp}/`);
-
         const data = {
             run_id: sample_id,
             conf: JSON.stringify({
-                job: {...sample.inputs, output_folder: sample_path}
+                job: {...sample.inputs, output_folder: AirflowProxy.output_folder(sample.projectId, sample_id)}
             })
         };
 
@@ -207,6 +203,11 @@ class AirflowProxy {
         return AirflowProxy.airflow_post(dag_id, data, sample);
     }
 
+    public static output_folder(projectId, sampleId) {
+        //TODO: Parse CWL and check files input are ready!
+        const _mp = path.resolve("/", `${projectId}/${sampleId}/`).slice(1);
+        return path.resolve(`${Meteor.settings['systemRoot']}/projects/${_mp}/`);
+    }
     /**
      * Saves cwl into airflow dir
      *
@@ -227,6 +228,7 @@ class AirflowProxy {
 
     /**
      * Middleware to listen for a progress report, endpoint + /progress
+     * //FIXME: probably memory leak, replace with stream of dags to clean
      */
     public listen_results(request, res, next) {
         let { body } = request;
@@ -245,20 +247,20 @@ class AirflowProxy {
          */
         if (dag_id === 'clean_dag_run') {
             Log.debug(`Successfully cleaned! ${run_id}`);
+            //FIXME: probably memory leak, replace with stream of dags to clean
             AirflowProxy.trigger_dag(run_id)
                 .pipe(
                     switchMap(({result, error, message, sample}) => {
                         let progress: any = null;
-                        Log.debug(`Switch map trigger dag! ${sample}`);
                         if (error) {
-                            Log.error("Trigger:", message);
+                            Log.error("AirflowProxy.trigger_dag:", message);
                             progress = {
                                 title: "Error",
                                 progress: 0,
                                 error: message
                             }
                         } else if (result) {
-                            Log.debug("Trigger:", result);
+                            Log.debug("AirflowProxy.trigger_dag:", result);
                             progress = {
                                 title: "Queued",
                                 progress: 0
@@ -267,7 +269,7 @@ class AirflowProxy {
                         if (progress && sample) {
                             return AirflowProxy.master_progress_update(sample._id, {progress} as any)
                         } else {
-                            throw new Error(`No sample ${progress}`);
+                            return of({error: true, message: `No sample ${progress}`});
                         }
                     }),
                     catchError((e) => of({error: true, message: `Error: ${e}`}))
@@ -453,7 +455,7 @@ class AirflowProxy {
         if (progress && sample) {
             return AirflowProxy.master_progress_update(sample._id, {progress} as any)
         } else {
-            throw new Error(`No sample ${progress}`);
+            return of({error: true, message: `No sample ${message}`});
         }
     }
 

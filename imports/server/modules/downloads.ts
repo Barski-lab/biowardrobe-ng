@@ -7,6 +7,7 @@ import { tap, map, merge, mergeMap } from 'rxjs/operators';
 import { Downloads, Samples } from '../../collections/shared';
 import { moduleLoader } from './remotes/moduleloader';
 import { Log } from './logger';
+import { AirflowProxy } from './airflow_proxy';
 
 const aria2 = require("aria2");
 const path = require("path");
@@ -89,11 +90,10 @@ class AriaDownload {
 
     public checkInputs(sampleId: string): boolean {
         let needDownload = false;
-        let sample = Samples.findOne( {"_id": sampleId} );
+        let sample: any = Samples.findOne( {"_id": sampleId} );
         
         if (sample && sample["inputs"]) {
             const inputs = sample["inputs"];
-            let destinationDirectory = inputs["output_folder"] || "/tmp";
             for (const key in inputs) {
                 if (inputs[key] && inputs[key].class === 'File' && !inputs[key].location.startsWith("file://")) {
                     const fileUrl = url.parse(inputs[key].location);
@@ -103,7 +103,7 @@ class AriaDownload {
                         if (!Downloads.findOne( {"sampleId": sampleId, "inputKey": key} )){
                             Downloads.insert({
                                 "uri": fileData.url,                   
-                                "path": path.resolve("/", destinationDirectory, fileData.basename),        
+                                "path": AirflowProxy.output_folder(sample.projectId, sample._id)+`/${fileData.basename}`,
                                 "header": fileData.header,
                                 "sampleId": sampleId,
                                 "inputKey": key,
