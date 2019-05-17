@@ -31,7 +31,7 @@ Accounts.registerLoginHandler("biowardrobeng", function (request) {
 
 
     let update = {};
-    let nm, result:any = {success:false};
+    let result:any = {success:false};
 
     if(Meteor.settings['ldap']
         && Meteor.settings['ldap']['url']
@@ -40,22 +40,22 @@ Accounts.registerLoginHandler("biowardrobeng", function (request) {
     ) {
 
         let _ldap:any = new LDAPClient(Meteor.settings['ldap']);
-        let ldap_response = _ldap.auth(_email, _pass);
 
-        result = Meteor.wrapAsync(function(x){
-            ldap_response.then((m)=>{
-                nm =  _.defaults(update, {
+        result = Meteor.wrapAsync(function(x) {
+            _ldap.auth(_email, _pass).then((m)=>{
+                const nm =  {
                     "success":     true,
                     "firstName":   m.givenName,
                     "lastName":    m.sn,
                     "occupation":  m.title,
                     "displayName": m.displayName,
                     "ldapDN":      m.dn,
-                    "login":       m.dn.slice(m.dn.indexOf('CN=')+3, m.dn.indexOf(','))
-                });
+                    "login":       m.dn.slice(m.dn.indexOf('CN=')+3, m.dn.indexOf(',')),
+                    ...update
+                };
                 x(null,nm);
             },(e)=>{
-                x(null,{"success":false});
+                x(null, {"success":false});
             });
         })();
 

@@ -33,7 +33,7 @@ export class LDAPClient {
     }
 
 
-    public auth(email,pass){
+    public auth(email, pass){
         let user;
         return this.doConnect (this._config)
             .then(

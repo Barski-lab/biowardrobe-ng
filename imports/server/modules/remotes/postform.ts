@@ -195,10 +195,7 @@ class PostFormModule implements BaseModuleInterface {
             "modified":  Date.now()/1000.0
         };
         return this.getRawData(params)
-            .then(res => {
-                // Log.debug("getRawData success");
-                return this.formFileList(res);
-            })
+            .then(res => this.formFileList(res))
             .then(
                 Meteor.bindEnvironment((filesWithSession) => {
                     Log.debug(`Updated for: ${params.login}`);
@@ -223,7 +220,8 @@ class PostFormModule implements BaseModuleInterface {
                     };
                     data["session"] = null;
                     ModuleCollection.update({"userId": params.userId}, {$set: data}, {upsert: true});
-                }));
+                }))
+                .catch((err) => Log.error('updateFileStorage:', err));
     }
 
 
@@ -236,6 +234,7 @@ class PostFormModule implements BaseModuleInterface {
         } else {
             return this.startLoginProcess(params)
                 .then((c) => this.getRawDataHelper(c))
+                .catch((err) => Log.error('getRawData:', err));
         }
     }
 

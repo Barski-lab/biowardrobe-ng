@@ -5,7 +5,6 @@ import * as jwt from 'jsonwebtoken';
 
 import { Log } from '../../server/modules/logger';
 import { connection, DDPConnection } from '../modules/ddpconnection';
-import { AccessTokens } from '../../collections/server';
 
 export const FileUploadCollection = new Mongo.Collection('raw_data_files', {  _suppressSameNameError: true } as any);
 
@@ -84,35 +83,35 @@ export const FilesUpload = new FilesCollection({
 
             let verifyOptions = {
                 subject: "download",
-                expiresIn: '2h',
+                audience: connection.satellite_id,
                 algorithm: ["ES512"]
             };
 
-            let publicKEY = connection.server_public_key;
-
             try {
-                telegram = jwt.verify(this.request.query.token, publicKEY, verifyOptions);
+                telegram = jwt.verify(this.request.query.token, connection.server_public_key, verifyOptions);
             } catch (err) {
+                Log.error("raw_data_files: token error: ", err);
                 throw new Meteor.Error(500, err);
             }
 
             let selector = {};
 
-            if (telegram.accessToken) {
-                selector = { accessToken: telegram.accessToken }
-            } else {
-                selector = { userId: telegram.userId }
-            }
-            const user = AccessTokens.findOne(selector);
+            // if (telegram.accessToken) {
+            //     selector = { accessToken: telegram.accessToken }
+            // } else {
+            //     selector = { userId: telegram.userId }
+            // }
+            // const user = AccessTokens.findOne(selector);
 
-            auth = ( telegram.sub === 'download' && !!user );
+            // auth = ( telegram.sub === 'download' );
+            auth = true;
 
-            Log.debug('token auth userId:', user.userId)
+            Log.debug('[raw_data_files] token auth userId:', telegram.userId)
 
         } else {
             auth = !!this.userId;
 
-            Log.debug('token internal auth userId:', this.userId)
+            Log.debug('[raw_data_files] token internal auth userId:', this.userId)
         }
 
         // let session = this.request.cookies.x_mtok;
@@ -132,13 +131,15 @@ export const FilesUpload = new FilesCollection({
     onBeforeUpload (fileData: FileData|any) {
 
         if (!fileData || !fileData.meta || !fileData.meta.token) {
-            Log.error("No token provided!");
+            Log.error("[raw_data_files/onBeforeUpload] No token provided!");
             throw new Meteor.Error(500, "No token provided!");
         }
 
         check(fileData.meta.token, String );
 
         let verifyOptions = {
+            subject: "upload",
+            audience: connection.satellite_id,
             algorithm: ["ES512"]
         };
 
@@ -152,10 +153,10 @@ export const FilesUpload = new FilesCollection({
             throw new Meteor.Error(500, err);
         }
 
-        if (this.userId !== telegram.userId) {
-            Log.error(`Wrong user! ${this.userId}, ${telegram.userId}`);
-            throw new Meteor.Error(404, "Wrong user!");
-        }
+        // if (this.userId !== telegram.userId) {
+        //     Log.error(`Wrong user! ${this.userId}, ${telegram.userId}`);
+        //     throw new Meteor.Error(404, "Wrong user!");
+        // }
 
         if (fileData._id !== telegram.fileId) {
             Log.error(`Wrong fileId! ${fileData._id}, ${telegram.fileId}`);
@@ -169,11 +170,18 @@ export const FilesUpload = new FilesCollection({
             draftId: telegram.draftId,
             sampleId: telegram.sampleId
         };
-        return !!(this.userId);
+        return true;
     },
 
     storagePath (fileObj): string {
-        let toSavePath:string = `${Meteor.settings['systemRoot']}/http_upload/`.replace(/\/+/g,'/');
+        let prjDirName = '';
+
+        if(fileObj && fileObj.meta && fileObj.meta.projectId) {
+            prjDirName = fileObj.meta.projectId;
+        }
+
+        let toSavePath:string = `${Meteor.settings['systemRoot']}/${prjDirName}/http_upload/`.replace(/\/+/g,'/');
+        Log.debug("[raw_data_files] toSavePath", toSavePath);
         // if(fileObj && fileObj.meta && fileObj.meta.storagePath){
         //     toSavePath = [toSavePath, fileObj.meta.storagePath].join('/').replace(/\/+/g,'/');
         // }
@@ -188,7 +196,7 @@ export const FilesUpload = new FilesCollection({
         if (!DDPConnection.connection) {
             return;
         }
-        Log.debug("FilesUpload onAfterRemove:", fileObj);
+        Log.debug("FilesUpload onAfterUpload:", fileObj);
 
         if (!fileObj.meta && !fileObj.meta.token && !fileObj.meta.userId) {
             throw new Meteor.Error(404, "no token");
@@ -218,17 +226,43 @@ export const FilesUpload = new FilesCollection({
 
 });
 
-Meteor.publish('raw_data_files', function ({sampleId, projectId, fileIdes}) {
-    Log.debug('publish raw_data_files: ', sampleId, projectId);
+Meteor.publish('raw_data_files', function ({sampleId, projectId, fileIdes, token}) {
+    Log.debug('[raw_data_files]: publish: ', sampleId, projectId, fileIdes, token);
+
+    check(token, String);
+
+
+    let verifyOptions = {
+        audience: connection.satellite_id,
+        subject: "download",
+        algorithm: ["ES512"]
+    };
+
+    let publicKEY = connection.server_public_key;
+    let telegram: any = {};
+
+    try {
+        telegram = jwt.verify(token, publicKEY, verifyOptions);
+    } catch (err) {
+        Log.error(err);
+        throw new Meteor.Error(500, err);
+    }
+
     if(fileIdes && Array.isArray(fileIdes)) {
+
         check(fileIdes, [String]);
         return FilesUpload.find({"_id": {$in: fileIdes}}).cursor;
+
     } else if(sampleId) {
+
         check(sampleId, String);
         return FilesUpload.find({"meta.sampleId": sampleId}).cursor;
+
     } else if(projectId) {
+
         check(projectId, String);
         return FilesUpload.find({"meta.projectId": projectId}).cursor;
+
     } else {
         return this.ready();
     }
@@ -241,38 +275,39 @@ Meteor.startup(() => {
 
 Meteor.methods({
     'file/remove' (id: any, token: any) {
-        // FIXME: fileId has to be from the token!!!
-        Log.debug('file/remove', id, this.userId);
-        if (! this.userId) {
-            throw new Meteor.Error(403, "Forbidden!");
-        }
+
         check(id, String);
         check(token, String);
 
-        let verifyOptions = {
+        Log.debug('[raw_data_files]: file/remove:', token, this.userId);
+
+        const verifyOptions = {
+            audience: connection.satellite_id,
             subject: "delete",
-            expiresIn: '2h',
             algorithm: ["ES512"]
         };
 
+        let telegram: any = {};
+
         try {
-            jwt.verify(token, connection.server_public_key, verifyOptions);
+            telegram = jwt.verify(token, connection.server_public_key, verifyOptions);
         } catch (err) {
-            Log.error(err);
+            Log.error("[raw_data_files]: file/remove error:", err);
             throw new Meteor.Error(500, err);
         }
 
-        let fileObj = FilesUpload.findOne({_id: id});
+
+        const fileObj = FilesUpload.findOne({_id: telegram.fileId});
 
         if (! fileObj ) {
-            throw new Meteor.Error(404, `File with ${id} can not be found!`)
+            throw new Meteor.Error(404, `File with ${telegram.fileId} can not be found!`)
         }
 
-        DDPConnection.call('satellite/file/removed', {id: id, meta: fileObj.meta })
+        DDPConnection.call('satellite/file/removed', {id: telegram.fileId, meta: fileObj.meta })
             .subscribe(() => {
                 Log.debug('Removed?');
             });
 
-        FilesUpload.remove({_id: id}, (e)=>Log.error(e));
+        FilesUpload.remove({_id: telegram.fileId}, (e) => Log.error(e));
     }
 });

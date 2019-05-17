@@ -4,20 +4,20 @@ import { Log } from '../modules/logger';
 
 import { AccessTokens } from '../../collections/server';
 
-Meteor.methods({
-    'master/user/auth'(options) {
-        Log.debug('master/user/auth', options);
-        check(options, {accessToken: String});
-        const user = AccessTokens.findOne(options);
-        Log.debug('master/user/auth', user);
-        if (user && user.userId) {
-            this.setUserId(user.userId);
-            Log.debug(`master/user/auth: ${user.userId} =? (${this.userId})`);
-            return user.userId;
-        }
-        throw new Meteor.Error(403, "Access deny");
-    }
-});
+// Meteor.methods({
+//     'master/user/auth'(options) {
+//         Log.debug('master/user/auth', options);
+//         check(options, {accessToken: String});
+//         const user = AccessTokens.findOne(options);
+//         Log.debug('master/user/auth', user);
+//         if (user && user.userId) {
+//             this.setUserId(user.userId);
+//             Log.debug(`master/user/auth: ${user.userId} =? (${this.userId})`);
+//             return user.userId;
+//         }
+//         throw new Meteor.Error(403, "Access deny");
+//     }
+// });
 
 Meteor['default_server'].method_handlers['forgotPassword'] = function (options) {
     // Redefining method forgotPassword from Accounts.
@@ -46,10 +46,6 @@ Meteor['default_server'].method_handlers['forgotPassword'] = function (options) 
         throw new Meteor.Error(500, 'User not found');
     }
 
-    const emails = _.pluck(user.emails || [], 'address');
-    const caseSensitiveEmail = _.find(emails, email => {
-        return email.toLowerCase() === _email;
-    });
-
-    Accounts.sendResetPasswordEmail(user._id, caseSensitiveEmail);
+    const emails = (user.emails || []).map( (e) => e.address);
+    Accounts.sendResetPasswordEmail(user._id, emails.find( email => email.toLowerCase() === _email));
 };

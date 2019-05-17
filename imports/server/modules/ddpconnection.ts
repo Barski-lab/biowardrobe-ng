@@ -15,13 +15,14 @@ import { of } from 'rxjs/observable/of';
 import { CWLCollection, Drafts, Labs, Projects, Samples, Requests } from '../../collections/shared';
 
 import { Log } from './logger';
-import {ModuleCollection} from './remotes/postform';
+import { ModuleCollection } from './remotes/postform';
 
 export class DDPConnection {
     private static DDPConnection: DDP.DDPStatic = null;
     private static _hooks = {};
     private public_key: string;
     private common_project_id: string;
+    private _satellite_id: string;
     // private static _messages = { active: [], backup: [] };
 
     private _sync$: BehaviorSubject<any> = new BehaviorSubject<any>(null);
@@ -46,6 +47,10 @@ export class DDPConnection {
 
     public get satellite_common_project_id() {
         return this.common_project_id;
+    }
+
+    public get satellite_id() {
+        return this._satellite_id;
     }
 
     constructor() {
@@ -79,6 +84,7 @@ export class DDPConnection {
                     let modules = [];
                     this.public_key = pubkey;
                     this.common_project_id = common_project_id;
+                    this._satellite_id = satId;
 
                     if(DDPConnection._hooks["files"]) {
 

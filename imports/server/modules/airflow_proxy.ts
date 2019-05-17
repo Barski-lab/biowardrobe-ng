@@ -26,7 +26,7 @@ import * as path from 'path';
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import * as zlib from 'zlib';
-import {WorkflowsGitFetcher} from '../methods/git';
+import { WorkflowsGitFetcher } from '../methods/git';
 
 export class AirflowProxy {
 

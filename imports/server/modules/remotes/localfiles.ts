@@ -5,6 +5,8 @@ import { Log } from '../logger';
 import { moduleLoader } from './moduleloader';
 import { BaseModuleInterface } from './base.module.interface';
 import { passMonitor$ } from '../accounts';
+import { connection } from '../ddpconnection';
+import * as jwt from 'jsonwebtoken';
 
 const path = require('path');
 const fs = require('fs');
@@ -106,17 +108,34 @@ const ModuleCollectionFields = {
     }
 };
 
-Meteor.publish(`module/${Meteor.settings.remotes[moduleId].publication}`, function (localPath) {
+Meteor.publish(`module/${Meteor.settings.remotes[moduleId].publication}`, function (token, localPath) {
 
-    Log.debug(`module/${Meteor.settings.remotes[moduleId].publication}`, this.userId, localPath);
+    Log.debug(`module/${Meteor.settings.remotes[moduleId].publication}`, this.userId, token, localPath);
 
-    if (!this.userId) {
-        this.ready();
-        return;
+    let verifyOptions = {
+        algorithm: ["ES512"]
+    };
+
+    let publicKEY = connection.server_public_key;
+    let telegram: any = {};
+
+    try {
+        telegram = jwt.verify(token, publicKEY, verifyOptions);
+    } catch (err) {
+        Log.error(err);
+
+        if (!this.userId) {
+            this.ready();
+            throw new Meteor.Error(500, err);
+        }
     }
+
 
     check(localPath, String);
 
+    let _localPath = path.resolve('/',localPath).slice(1);
+
+    _localPath = path.resolve(Meteor.settings.remotes[moduleId].base_directory,_localPath);
 
     let walkADirSync = function(dir) {
         let files = [];
@@ -146,12 +165,11 @@ Meteor.publish(`module/${Meteor.settings.remotes[moduleId].publication}`, functi
     };
     let data = {};
     data["active"] = true;
-    data["userId"] = this.userId;
+    data["userId"] = telegram.userId;
     data["list"] = {
         path: localPath,
-        ...walkADirSync(localPath)
+        ...walkADirSync(_localPath)
     };
-
     this.added(`${Meteor.settings.remotes[moduleId].publication}`, localPath, data);
 
     this.onStop(() => {
