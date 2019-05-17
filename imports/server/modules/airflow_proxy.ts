@@ -181,15 +181,9 @@ export class AirflowProxy {
             return of({ error: true, message: `Project is not for analysis yet ${sample_id}`});
         }
 
-        const target_dir = path.resolve("/", Meteor.settings['systemRoot'], 'projects', sample['project']._id, 'inputs')
-        let allow_delete = true;
-        for (const k in sample.inputs){
-            if (k.includes("fastq") && path.dirname(sample.inputs[k].location) !== target_dir){
-                allow_delete = false;
-            }
-        }
-
-        if (allow_delete){
+        if (sample.invalid_import){
+            FileUploadCollection.remove({"meta.isOutput": true, "meta.sampleId": sample._id});
+        } else {
             // Do not run this in test will delete local files!!!
             FilesUpload.remove({"meta.isOutput": true, "meta.sampleId": sample._id}, (err) => err?Log.error(err): "" );
         }
