@@ -156,8 +156,8 @@ class PostFormModule implements BaseModuleInterface {
     private encrypt (data: string, key: string, iv: string){
         if( !iv || !key ) { return; }
         let cipher = crypto.createCipheriv('aes-128-cbc',
-            new Buffer(key,'base64'),
-            new Buffer(iv, 'base64'));
+            Buffer.from(key,'base64'),
+            Buffer.from(iv, 'base64'));
         cipher.setAutoPadding(true);
         return Buffer.concat([cipher.update(data), cipher.final()]).toString('base64');
     }
@@ -171,8 +171,8 @@ class PostFormModule implements BaseModuleInterface {
     private decrypt (data: string, key: string, iv: string) {
         if( !iv || !key ) { return; }
         const decipher = crypto.createDecipheriv('aes-128-cbc',
-            new Buffer(key,'base64'),
-            new Buffer(iv, 'base64'));
+            Buffer.from(key,'base64'),
+            Buffer.from(iv, 'base64'));
         decipher.setAutoPadding(true);
         let decrypted = decipher.update(data, 'base64', 'utf8');
         return decrypted + decipher.final('utf8');

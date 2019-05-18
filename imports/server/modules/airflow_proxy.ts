@@ -132,7 +132,7 @@ export class AirflowProxy {
 
         let dag_id = `${cwl._id}-${cwl.git.sha}`; // path.basename(cwl.git.path, ".cwl");
 
-        let packed = JSON.parse(zlib.gunzipSync(new Buffer(cwl.source.packed, 'base64')).toString());
+        let packed = JSON.parse(zlib.gunzipSync(Buffer.from(cwl.source.packed, 'base64')).toString());
         WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dags_folder"], dag_id, packed);
 
         let queue = airflowQueueCollection.findOne({sample_id});
@@ -228,7 +228,7 @@ export class AirflowProxy {
             Log.error("No cwl", cwl_id);
             return of({ error: true, message: `no cwl ${cwl_id}` });
         }
-        let packed = JSON.parse(zlib.gunzipSync(new Buffer(cwl.source.packed, 'base64')).toString());
+        let packed = JSON.parse(zlib.gunzipSync(Buffer.from(cwl.source.packed, 'base64')).toString());
 
         WorkflowsGitFetcher.exportWorkflow(Meteor.settings["airflow"]["dags_folder"], `${cwl._id}-${cwl.git.sha}`, packed);
         return of(cwl._id);

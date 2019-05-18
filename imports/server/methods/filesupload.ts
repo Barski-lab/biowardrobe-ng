@@ -6,6 +6,9 @@ import * as jwt from 'jsonwebtoken';
 import { Log } from '../../server/modules/logger';
 import { connection, DDPConnection } from '../modules/ddpconnection';
 
+const path = require('path');
+const fs = require('fs');
+
 export const FileUploadCollection = new Mongo.Collection('raw_data_files', {  _suppressSameNameError: true } as any);
 
 export const FilesUpload = new FilesCollection({
@@ -174,18 +177,7 @@ export const FilesUpload = new FilesCollection({
     },
 
     storagePath (fileObj): string {
-        let prjDirName = '';
-
-        if(fileObj && fileObj.meta && fileObj.meta.projectId) {
-            prjDirName = fileObj.meta.projectId;
-        }
-
-        let toSavePath:string = `${Meteor.settings['systemRoot']}/${prjDirName}/http_upload/`.replace(/\/+/g,'/');
-        Log.debug("[raw_data_files] toSavePath", toSavePath);
-        // if(fileObj && fileObj.meta && fileObj.meta.storagePath){
-        //     toSavePath = [toSavePath, fileObj.meta.storagePath].join('/').replace(/\/+/g,'/');
-        // }
-        return toSavePath;
+        return `${Meteor.settings['systemRoot']}/http_upload/`.replace(/\/+/g,'/');
     },
 
     /**
@@ -198,27 +190,57 @@ export const FilesUpload = new FilesCollection({
         }
         Log.debug("FilesUpload onAfterUpload:", fileObj);
 
-        if (!fileObj.meta && !fileObj.meta.token && !fileObj.meta.userId) {
+        if (!fileObj.meta && !fileObj.meta.token && !fileObj.meta.userId && !fileObj.meta.projectId) {
             throw new Meteor.Error(404, "no token");
         }
 
-        DDPConnection.call('satellite/file/uploaded', {token: fileObj.meta.token, location: `file://${fileObj.path}`})
-            .subscribe(() => {
-                FileUploadCollection.update({_id: fileObj._id},
-                    {
-                        $unset: {
-                            "meta.token": 1,
-                            "meta.iat": 1,
-                            "meta.exp": 1,
-                            "meta.userId": 1,
-                            "meta.fileId": 1
-                        },
-                        $set: {
-                            "meta.synced": Date.now()/1000.0
-                        }
+        let toSavePath = `${Meteor.settings['systemRoot']}/projects/${fileObj.meta.projectId}/inputs/`.replace(/\/+/g,'/');
+        try {
+            fs.mkdirSync(toSavePath, { recursive: true });
+        } catch (err) {
+            if (err.code !== 'EEXIST') { Log.error('onAfterUpload:', err); }
+        }
+
+        try {
+            fs.renameSync(fileObj, toSavePath);
+        } catch (err) {
+            Log.error('onAfterUpload renameSync:', err);
+        }
+
+        const newFile = {
+            userId: fileObj.meta.userId,
+            fileId: fileObj._id,
+            fileName: fileObj.name,
+            type: fileObj.type,
+            meta: {
+                ...fileObj.meta,
+                isOutput: false
+            }
+        };
+
+        this.remove(fileObj._id);
+        this.addFile(toSavePath, newFile, (err, fileRef) => {
+            if(err) {
+                Log.error(err);
+            } else {
+                DDPConnection.call('satellite/file/uploaded', {token: fileRef.meta.token, location: `file://${fileRef.path}`})
+                    .subscribe(() => {
+                        FileUploadCollection.update({_id: fileRef._id},
+                            {
+                                $unset: {
+                                    "meta.token": 1,
+                                    "meta.iat": 1,
+                                    "meta.exp": 1,
+                                    "meta.fileId": 1
+                                },
+                                $set: {
+                                    "meta.synced": Date.now()/1000.0
+                                }
+                            });
+                        Log.debug('Updated?');
                     });
-                Log.debug('Updated?');
-            });
+            }
+        });
 
     } //Alternatively use: addListener('afterUpload', func)
 
