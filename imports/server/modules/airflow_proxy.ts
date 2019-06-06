@@ -388,6 +388,18 @@ export class AirflowProxy {
             return {meta, fileName, userId: sample.userId, fileId: Random.id()};
         };
 
+        let processDirectory = (sample:any, output_data: any) => {
+            if (output_data.class === "File") {
+                let opts = getOpts(sample, output_data.basename);
+                FilesUpload.addFile(output_data.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
+                output_data['_id'] = opts.fileId;
+            } else {
+                for ( const i in output_data.listing ) {
+                    processDirectory(sample, output_data.listing[i])
+                }
+            }
+        };
+
         for ( const output_key in results ) {
             if (results[output_key] && results[output_key].class === 'File' ) {
 
@@ -408,7 +420,8 @@ export class AirflowProxy {
                     })
                 }
             } else if (results[output_key] && results[output_key].class === 'Directory') {
-
+                processDirectory(sample, results[output_key]);
+                outputs[output_key] = results[output_key]
             } else {
                 outputs[output_key] = results[output_key];
             }
