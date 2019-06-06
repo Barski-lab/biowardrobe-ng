@@ -23,6 +23,7 @@ import { ariaDownload } from './downloads'
 import { Log } from './logger';
 
 import * as path from 'path';
+import * as mime from 'mime';
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import * as zlib from 'zlib';
@@ -378,19 +379,28 @@ export class AirflowProxy {
 
         let outputs: any = {};
 
-        let getOpts = (sample, fileName?) => {
+        let getMimeType = (filePath: any) => {
+            try {
+                return mime.getType(filePath);
+            }
+            catch(e) {
+                return "application/octet-stream";
+            }
+        }
+
+        let getOpts = (sample: any, filePath: any, fileName: any) => {
             let meta = {
                 projectId: sample.projectId,
                 sampleId: sample._id,
                 userId: sample.userId,
                 isOutput: true
             };
-            return {meta, fileName, userId: sample.userId, fileId: Random.id()};
+            return {meta, fileName, userId: sample.userId, fileId: Random.id(), type: getMimeType(filePath)};
         };
 
         let processDirectory = (sample:any, output_data: any) => {
             if (output_data.class === "File") {
-                let opts = getOpts(sample, output_data.basename);
+                let opts = getOpts(sample, output_data.location.replace('file://',''), output_data.basename);
                 FilesUpload.addFile(output_data.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
                 output_data['_id'] = opts.fileId;
             } else {
@@ -403,7 +413,7 @@ export class AirflowProxy {
         for ( const output_key in results ) {
             if (results[output_key] && results[output_key].class === 'File' ) {
 
-                let opts = getOpts(sample, `${output_key}${results[output_key].nameext}`);
+                let opts = getOpts(sample, results[output_key].location.replace('file://',''), `${output_key}${results[output_key].nameext}`);
                 FilesUpload.addFile(results[output_key].location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
 
                 outputs[output_key] = results[output_key];
@@ -412,7 +422,7 @@ export class AirflowProxy {
                 if (results[output_key].secondaryFiles && results[output_key].secondaryFiles.length >0 ) {
                     outputs[output_key].secondaryFiles = results[output_key].secondaryFiles.map( (sf, index) => {
 
-                        let opts = getOpts(sample, `${output_key}_${index}${sf.nameext}`);
+                        let opts = getOpts(sample, sf.location.replace('file://',''), `${output_key}_${index}${sf.nameext}`);
                         FilesUpload.addFile(sf.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
                         sf['_id'] = opts.fileId;
 
