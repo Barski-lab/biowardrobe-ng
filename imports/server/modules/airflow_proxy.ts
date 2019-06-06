@@ -62,10 +62,10 @@ export class AirflowProxy {
         this.app.use(bodyParser.urlencoded({ extended: true }));
         this.app.use(bodyParser.json());
 
-        this.app.post('/airflow/progress', this.debugMiddle, Meteor.bindEnvironment(self.listen_progress));
-        this.app.post('/airflow/results', this.debugMiddle, Meteor.bindEnvironment(self.listen_results));
+        this.app.post('/progress', this.debugMiddle, Meteor.bindEnvironment(self.listen_progress));
+        this.app.post('/results', this.debugMiddle, Meteor.bindEnvironment(self.listen_results));
         this.app.use(this.routes);
-        WebApp.rawConnectHandlers.use(this.app);
+        WebApp.connectHandlers.use('/airflow', this.app);
     }
 
     /**
@@ -137,7 +137,7 @@ export class AirflowProxy {
 
         let queue = airflowQueueCollection.findOne({sample_id});
         if (queue) {
-            return of({ error: true, message: `Not yet cleaned`, sample: sample });
+            return of({ warning: true, message: `Not yet cleaned`, sample: sample });
         }
 
         let queue_id = airflowQueueCollection.insert({sample_id});
@@ -444,7 +444,7 @@ export class AirflowProxy {
             )
     }
 
-    public after_cleanup_dag_routine( {result, error, message, sample} ): Observable<any> {
+    public after_cleanup_dag_routine( {result, error, message, sample, warning} ): Observable<any> {
         let progress: any = null;
         if (error) {
             Log.error("Cleanup:", message);
@@ -453,6 +453,13 @@ export class AirflowProxy {
                 progress: 0,
                 error: message
             }
+        } else if (warning) {
+                Log.error("Cleanup:", message);
+                progress = {
+                    title: "Warning",
+                    progress: 0,
+                    warning: message
+                }
         } else if (result) {
             Log.debug("Cleanup:", result);
             progress = {
@@ -489,8 +496,8 @@ Meteor.startup(() => {
             switchMap(({name, event, id}) => { // collection name, event {added, changed, removed}, id - sample id
                 return airflowProxy.cleanup_dag(id);
             }),
-            mergeMap( ({result, error, message, sample}) => {
-                return airflowProxy.after_cleanup_dag_routine({result, error, message, sample});
+            mergeMap( ({result, error, warning, message, sample}) => {
+                return airflowProxy.after_cleanup_dag_routine({result, error, message, sample, warning});
             }),
             catchError((e) => of({ error: true, message: `Error: ${e}` }))
         )
@@ -503,8 +510,8 @@ Meteor.startup(() => {
             switchMap(({sampleId, error}) => {
                 return airflowProxy.cleanup_dag(sampleId);
             }),
-            mergeMap( ({result, error, message, sample}) => {
-                return airflowProxy.after_cleanup_dag_routine({result, error, message, sample});
+            mergeMap( ({result, error, message, sample, warning}) => {
+                return airflowProxy.after_cleanup_dag_routine({result, error, message, sample, warning});
             }),
             catchError((e) => of({ error: true, message: `Error: ${e}` }))
         )

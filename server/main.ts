@@ -2,7 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import '../imports/server';
 import { setExtraUsers, configAccounts } from '../imports/server/modules/accounts'
 
-const cors = require('cors');
+// const cors = require('cors');
 
 Meteor.startup(() => {
     // Throttle.setMethodsAllowed(false);            // Disable client-side methods

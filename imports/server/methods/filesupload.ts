@@ -51,7 +51,7 @@ export const FilesUpload = new FilesCollection({
         headers['Connection'] = 'keep-alive';
         headers['Content-Type'] = versionRef.type || 'application/octet-stream';
         headers['Accept-Ranges'] = 'bytes';
-        headers['Access-Control-Allow-Origin'] = '*';
+        // headers['Access-Control-Allow-Origin'] = '*';
         return headers;
     },
 
@@ -194,15 +194,18 @@ export const FilesUpload = new FilesCollection({
             throw new Meteor.Error(404, "no token");
         }
 
-        let toSavePath = `${Meteor.settings['systemRoot']}/projects/${fileObj.meta.projectId}/inputs/`.replace(/\/+/g,'/');
+        const fn = fileObj.path.split('/').slice(-1)[0];
+        let toSavePath = `${Meteor.settings['systemRoot']}/projects/${fileObj.meta.projectId}/inputs`.replace(/\/+/g,'/');
         try {
             fs.mkdirSync(toSavePath, { recursive: true });
         } catch (err) {
             if (err.code !== 'EEXIST') { Log.error('onAfterUpload:', err); }
         }
 
+        toSavePath = `${toSavePath}/${fn}`;
+
         try {
-            fs.renameSync(fileObj, toSavePath);
+            fs.renameSync(fileObj.path, toSavePath );
         } catch (err) {
             Log.error('onAfterUpload renameSync:', err);
         }
@@ -296,9 +299,8 @@ Meteor.startup(() => {
 
 
 Meteor.methods({
-    'file/remove' (id: any, token: any) {
+    'file/remove' (token: any) {
 
-        check(id, String);
         check(token, String);
 
         Log.debug('[raw_data_files]: file/remove:', token, this.userId);
@@ -325,7 +327,7 @@ Meteor.methods({
             throw new Meteor.Error(404, `File with ${telegram.fileId} can not be found!`)
         }
 
-        DDPConnection.call('satellite/file/removed', {id: telegram.fileId, meta: fileObj.meta })
+        DDPConnection.call('satellite/file/removed', { token })
             .subscribe(() => {
                 Log.debug('Removed?');
             });

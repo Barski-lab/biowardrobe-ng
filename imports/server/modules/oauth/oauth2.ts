@@ -32,7 +32,7 @@ export class Auth2 {
             oauth2Model.cleanUp();
         }, 1000*60*10);
 
-        WebApp.rawConnectHandlers.use(this.app);
+        WebApp.connectHandlers.use('/oauth', this.app);
     }
 
     debugMiddle(req, res, next) {
@@ -43,9 +43,9 @@ export class Auth2 {
     initRoutes(){
         let self = this;
 
-        this.app.all('/oauth/token',this.debugMiddle, this.oauthserver.grant());
+        this.app.all('/token',this.debugMiddle, this.oauthserver.grant());
 
-        this.app.get('/oauth/authorize', this.debugMiddle, Meteor.bindEnvironment(
+        this.app.get('/authorize', this.debugMiddle, Meteor.bindEnvironment(
             (req, res, next) => {
                 Log.debug('[OAuth2Server req]:', req.query);
                 Log.debug('[OAuth2Server settings]:', oauth2Model.getClientFromSettings(req.query.client_id));
@@ -56,7 +56,7 @@ export class Auth2 {
             }
         ));
 
-        this.app.post('/oauth/authorize', this.debugMiddle, Meteor.bindEnvironment(
+        this.app.post('/authorize', this.debugMiddle, Meteor.bindEnvironment(
             (req, res, next) => {
                 if (req.body.token == null) {
                     return res.sendStatus(401).send('No token');
@@ -76,13 +76,13 @@ export class Auth2 {
             }
         ));
 
-        this.app.post('/oauth/authorize', this.debugMiddle, this.oauthserver.authCodeGrant( Meteor.bindEnvironment(
+        this.app.post('/authorize', this.debugMiddle, this.oauthserver.authCodeGrant( Meteor.bindEnvironment(
             (req, next) => {
                 return next(null, req.body.allow === 'yes', req.user.id, req.user);
             }
         )));
 
-        this.app.post('/oauth/identity', this.debugMiddle, this.oauthserver.authorise(), Meteor.bindEnvironment(
+        this.app.post('/identity', this.debugMiddle, this.oauthserver.authorise(), Meteor.bindEnvironment(
             (req, res, next) => {
 
                 var user = Meteor.users.findOne(req.user.id);
@@ -99,7 +99,7 @@ export class Auth2 {
                 return next(req,res,next);
             }));
 
-        this.app.all('/oauth/logout',this.debugMiddle, this.oauthserver.authorise(), Meteor.bindEnvironment(
+        this.app.all('/logout',this.debugMiddle, this.oauthserver.authorise(), Meteor.bindEnvironment(
             (req, res, next) => {
                 var user = Meteor.users.findOne(req.user.id);
                 Log.debug('[OAuth2Server] /oauth/logout in meteor :',user);
@@ -117,7 +117,7 @@ export class Auth2 {
         );
 
         this.app.use(this.routes);
-        this.app.all('/oauth/*', this.oauthserver.errorHandler());
+        this.app.all('/*', this.oauthserver.errorHandler());
     }
 }
 

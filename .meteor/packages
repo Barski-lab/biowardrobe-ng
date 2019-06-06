@@ -15,8 +15,12 @@ standard-minifier-css@1.5.3   # CSS minifier run for production mode
 standard-minifier-js@2.4.1    # JS minifier run for production mode
 es5-shim@4.8.0                # ECMAScript 5 compatibility for older browsers.
 ecmascript@0.12.4            # Enable ECMAScript2015+ syntax in app code
+dynamic-import@0.5.1
 
 angular-compilers
+
+http@1.4.2
+ostrio:files
 
 check@1.3.1
 ejson@1.1.0
@@ -27,12 +31,9 @@ email@1.2.3
 alanning:roles
 service-configuration@1.0.11
 ddp-rate-limiter@1.0.7
-ostrio:files
 
 zuuk:stale-session
 xolvio:cleaner
 
-dynamic-import@0.5.1
 underscore@1.0.10
 #shell-server@0.4.0
-http@1.4.2

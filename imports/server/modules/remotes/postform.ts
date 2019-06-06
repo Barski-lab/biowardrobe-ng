@@ -111,7 +111,7 @@ class PostFormModule implements BaseModuleInterface {
         }, this._info.refreshSessionInterval*1000);
 
         // Give access to localhost to get details about authorized user
-        WebApp.rawConnectHandlers.use('/coredata', Meteor.bindEnvironment((req, res, next) => {
+        WebApp.connectHandlers.use('/coredata', Meteor.bindEnvironment((req, res, next) => {
             res.writeHead(200,{ 'Content-Type': 'text/plain'});
             if(req.connection.remoteAddress!='127.0.0.1') {
                 res.end('');
