@@ -1,21 +1,29 @@
 import { Meteor } from 'meteor/meteor';
 import { Observable, Subject } from 'rxjs';
+import { _throw as throwError } from 'rxjs/observable/throw'; // should be imported directly as throwError from rxjs after updating to RxJS 6
 import { fromEvent } from 'rxjs/observable/fromEvent';
 import { fromPromise } from 'rxjs/observable/fromPromise';
 import { tap, map, merge, mergeMap } from 'rxjs/operators';
+import { of } from 'rxjs/observable/of';
 
 import { Downloads, Samples } from '../../collections/shared';
 import { moduleLoader } from './remotes/moduleloader';
 import { Log } from './logger';
 import { AirflowProxy } from './airflow_proxy';
 
+import { connection, DDPConnection } from './ddpconnection';
+import { FilesUpload } from '../methods/filesupload';
+
+import * as jwt from 'jsonwebtoken';
+import * as mime from 'mime';
 const aria2 = require("aria2");
 const path = require("path");
 const url = require('url');
+const fs = require('fs');
 
 // For testing:
 // Listen only on localhost:6800, no encryion enabled, no secret token
-// aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800
+// aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800 --rpc-secret="your secret token"
 
 class AriaDownload {
 
@@ -23,6 +31,7 @@ class AriaDownload {
     private _downloadQueue = {};
 
     private _nextToDownload$: Subject<any> = new Subject<any>();
+    private _waitForCopy$: Subject<any> = new Subject<any>();
     private _events$: Subject<any> = new Subject<any>();
     public get events$() {
         return this._events$;
@@ -46,8 +55,31 @@ class AriaDownload {
             }))
     };
 
+    private _copyLocalFile(downloadUri: any, destinationPath: any, downloadId: any) {
+        Log.debug("copy file from", downloadUri, "to", destinationPath);
+        try {
+            fs.mkdirSync(path.dirname(destinationPath), {recursive: true});
+        } catch (err) {
+            Log.error('Failed to create directory', err);
+        }
+        fs.copyFile(downloadUri, destinationPath, fs.constants.COPYFILE_EXCL, (err: any) => {
+            if (err) {
+                Log.error('Failed to copy file', err);
+                this._waitForCopy$.next({"downloadId": downloadId, "error": err});
+            } else {
+                this._waitForCopy$.next({"downloadId": downloadId});
+            }
+        });
+    };
+
     private _addDownload(downloadUri: any, destinationPath: any, header: any): Observable<any> {
-        return fromPromise(this._aria.call("addUri", [downloadUri], {"dir": path.dirname(destinationPath), "out": path.basename(destinationPath), "header": header}))
+        if (header == "copy"){
+            let downloadId = Random.id();
+            this._copyLocalFile(downloadUri, destinationPath, downloadId);
+            return of(downloadId);
+        } else {
+            return fromPromise(this._aria.call("addUri", [downloadUri], {"dir": path.dirname(destinationPath), "out": path.basename(destinationPath), "header": header}))
+        }
     }
 
     constructor() {
@@ -79,7 +111,8 @@ class AriaDownload {
                 
             self._downloadComplete()
                 .pipe(
-                    merge(self._downloadError()))
+                    merge(self._downloadError()),
+                    merge(self._waitForCopy$.asObservable()))
                 .subscribe(
                     Meteor.bindEnvironment( ({downloadId, error}) => error ? self._onDownloadError(downloadId) : self._onDownloadComplete(downloadId) ),
                     (err) => Log.error("Error encountered while processing results from scheduled download", err))
@@ -89,27 +122,38 @@ class AriaDownload {
     };
 
     public checkInputs(sampleId: string): boolean {
+        Log.debug("Check inputs for sample", sampleId);
         let needDownload = false;
         let sample: any = Samples.findOne( {"_id": sampleId} );
         
         if (sample && sample["inputs"]) {
             const inputs = sample["inputs"];
             for (const key in inputs) {
-                if (inputs[key] && inputs[key].class === 'File' && !inputs[key].location.startsWith("file://")) {
+                if (inputs[key] && inputs[key].location && !inputs[key].location.startsWith("file://")) {
+                    Log.debug("Process input", key, inputs[key].location);
                     const fileUrl = url.parse(inputs[key].location);
                     const module = moduleLoader.getModule(fileUrl);
-                    if (module){
-                        const fileData = module.getFile(fileUrl, sample.userId);
-                        if (!Downloads.findOne( {"sampleId": sampleId, "inputKey": key} )){
-                            Downloads.insert({
-                                "uri": fileData.url,                   
-                                "path": AirflowProxy.output_folder(sample.projectId, sample._id)+`/${fileData.basename}`,
-                                "header": fileData.header,
-                                "sampleId": sampleId,
-                                "inputKey": key,
-                                "downloaded": false                                                 
-                            });
-                        }
+                    if (!module){
+                        Log.error("Failed find module for protocol", fileUrl.protocol.replace(":",""));
+                        throwError("Module not found: " + inputs[key].location);
+                    }
+                    Log.debug("Found module", module.getInfo().caption);
+                    const fileData = module.getFile(fileUrl, sample.userId);
+                    Log.debug("fileData received from module", fileData);
+                    let telegram = jwt.decode(inputs[key].token.replace("token://", ""));
+                    if (telegram && !Downloads.findOne( {"sampleId": sampleId, "inputKey": key} )){
+                        Downloads.insert({
+                            "uri": fileData.url,
+                            "path": AirflowProxy.output_folder(sample.projectId, sample._id)+`/${fileData.basename}`,
+                            "header": fileData.header,
+                            "sampleId": sampleId,
+                            "projectId": telegram.projectId,
+                            "userId": telegram.userId,
+                            "fileId": telegram.fileId,
+                            "inputKey": key,
+                            "token": inputs[key].token.replace("token://", ""),
+                            "downloaded": false
+                        });
                     }
                     needDownload = true;
                 }
@@ -124,19 +168,43 @@ class AriaDownload {
             Log.debug("Success download", downloadId);
             Downloads.update( {"_id": doc._id}, {$set: {"downloaded": true}} );
             delete this._downloadQueue[downloadId];
-            let updates = {};
-            updates["inputs." + doc.inputKey + ".location"] = "file://" + doc.path;
-            Samples.update({"_id": doc.sampleId}, {$set: updates});
-            if (this.checkInputs(doc.sampleId)){
-                this._events$.next( {"sampleId": doc.sampleId} );
-            }
+            DDPConnection.call('satellite/file/uploaded', {token: doc.token, location: `file://${doc.path}`})
+                .subscribe(() => {
+                    let opts = {
+                        meta: {
+                            projectId: doc.projectId,
+                            sampleId: doc.sampleId,
+                            userId: doc.userId,
+                            synced: Date.now()/1000.0,
+                            isOutput: false
+                        },
+                        fileName: path.basename(doc.path),
+                        userId: doc.userId,
+                        fileId: doc.fileId,
+                        type: mime.getType(doc.path)
+                    }
+                    FilesUpload.addFile(doc.path, opts, (err) => {
+                        if (err){
+                            Log.error("Failed to add file to FilesUpload collection", err)
+                        } else {
+                            Samples.update({ "_id": doc.sampleId }, {
+                                $set: {
+                                    [`inputs.${doc.inputKey}`]: { "_id": doc.fileId, "location": "file://" + doc.path, "class": "File" }
+                                }
+                            });
+                            if (this.checkInputs(doc.sampleId)){
+                                this._events$.next( {"sampleId": doc.sampleId} );
+                            }
+                        }
+                    });
+                });
         }
     }
     
     private _onDownloadError (downloadId: string) {
         let doc = this._downloadQueue[downloadId];
         if (doc) {
-            Log.debug("Failed download", downloadId);
+            Log.error("Failed download", downloadId);
             let errorMsg = "Failed to download " + doc.uri + ", downloadId: " + downloadId;
             Downloads.update({"_id": doc._id}, {$set: {"error": errorMsg}});
             delete this._downloadQueue[downloadId];

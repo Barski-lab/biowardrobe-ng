@@ -26,7 +26,7 @@ class ModuleLoader {
     public getModule(fileUrl: any): any {
         return Object.keys(this.activeModules)
             .map(key => this.activeModules[key])
-            .find((m: any) => m.getInfo().protocol == fileUrl.protocol);
+            .find((m: any) => m.getInfo().protocol == fileUrl.protocol.replace(":",""));
     }
 
 }

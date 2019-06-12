@@ -89,6 +89,13 @@ class LocalFilesModule implements BaseModuleInterface {
             type: this._info.type
         };
     }
+
+    public getFile(fileUrl: any, userId?: any) {
+        return { "url": path.join( this._info.base_directory, path.resolve("/", fileUrl.path) ), 
+                 "basename": path.basename(fileUrl.path),
+                 "header": "copy"}
+    }
+
 }
 
 Meteor.startup(() => {
