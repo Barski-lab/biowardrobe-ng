@@ -140,7 +140,20 @@ class AriaDownload {
                     Log.debug("Found module", module.getInfo().caption);
                     const fileData = module.getFile(fileUrl, sample.userId);
                     Log.debug("fileData received from module", fileData);
-                    let telegram = jwt.decode(inputs[key].token.replace("token://", ""));
+
+                    let telegram: any;
+                    let publicKey = connection.server_public_key;
+                    let verifyOptions = {
+                        algorithm: ["ES512"]
+                    };
+                    try {
+                        telegram = jwt.verify(inputs[key].token.replace("token://", ""), publicKey, verifyOptions);
+                    } catch (err) {
+                        Log.error("Failed to verify token", err);
+                        throwError("Failed to verify token: " + inputs[key].token.replace("token://", ""));
+                    }
+                    // let telegram = jwt.decode(inputs[key].token.replace("token://", ""));
+                    
                     if (telegram && !Downloads.findOne( {"sampleId": sampleId, "inputKey": key} )){
                         Downloads.insert({
                             "uri": fileData.url,
