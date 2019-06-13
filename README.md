@@ -24,7 +24,7 @@
       "directurl": {
         "caption": "Direct URL",
         "type": "files",
-        "protocol": ["https"],                   # can be String also
+        "protocol": ["https"],          # can be String also
         "refreshSessionInterval": 180
       }
    ```
@@ -39,7 +39,7 @@
    ```yaml
         "fastq_file": {
             "class": "File",
-            "location": "PROTOCOL:///input.fastq.gz",               # PROTOCOL defines the remote module to use
+            "location": "PROTOCOL:///input.fastq.gz",             # PROTOCOL defines the remote module to use
             "token": "token://cd62d3d9587e44d9a537c1444c903b59"
         },
    ```
