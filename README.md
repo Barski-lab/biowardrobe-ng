@@ -12,7 +12,7 @@
           "host": "localhost",
           "port": 6800,
           "secure": false,
-          "secret": "",
+          "secret": "secret_key",
           "path": "/jsonrpc"
         }
       }
@@ -32,7 +32,7 @@
 3. Run `Aria2` server following the example. Set additional security options if necessary.
 
    ```bash
-      aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800 --console-log-level=debug
+      aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800 --console-log-level=debug --rpc-secret="secret_key"
    ```
 
 4. Input should look the following way
