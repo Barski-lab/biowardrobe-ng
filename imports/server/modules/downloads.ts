@@ -1,6 +1,5 @@
 import { Meteor } from 'meteor/meteor';
 import { Observable, Subject } from 'rxjs';
-import { _throw as throwError } from 'rxjs/observable/throw'; // should be imported directly as throwError from rxjs after updating to RxJS 6
 import { fromEvent } from 'rxjs/observable/fromEvent';
 import { fromPromise } from 'rxjs/observable/fromPromise';
 import { tap, map, merge, mergeMap } from 'rxjs/operators';
@@ -135,7 +134,7 @@ class AriaDownload {
                     const module = moduleLoader.getModule(fileUrl);
                     if (!module){
                         Log.error("Failed find module for protocol", fileUrl.protocol.replace(":",""));
-                        throwError("Module not found: " + inputs[key].location);
+                        return false;
                     }
                     Log.debug("Found module", module.getInfo().caption);
                     const fileData = module.getFile(fileUrl, sample.userId);
@@ -150,9 +149,8 @@ class AriaDownload {
                         telegram = jwt.verify(inputs[key].token.replace("token://", ""), publicKey, verifyOptions);
                     } catch (err) {
                         Log.error("Failed to verify token", err);
-                        throwError("Failed to verify token: " + inputs[key].token.replace("token://", ""));
+                        return false;
                     }
-                    // let telegram = jwt.decode(inputs[key].token.replace("token://", ""));
                     
                     if (telegram && !Downloads.findOne( {"sampleId": sampleId, "inputKey": key} )){
                         Downloads.insert({
