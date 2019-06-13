@@ -31,7 +31,9 @@ class DirectUrlModule implements BaseModuleInterface {
             moduleId: this._info.moduleId,
             caption: this._info.caption,
             protocol: this._info.protocol,
-            type: this._info.type
+            type: this._info.type,
+            collection: "",                 // to pass check on the other side
+            publication: ""                 // to pass check on the other side
         };
     }
 
