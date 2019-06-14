@@ -5,6 +5,8 @@ import { Log } from '../logger';
 import { moduleLoader } from './moduleloader';
 import { BaseModuleInterface } from './base.module.interface';
 import { passMonitor$ } from '../accounts';
+import { connection } from '../ddpconnection';
+import * as jwt from 'jsonwebtoken';
 
 const crypto = require('crypto');
 const path = require('path');
@@ -378,13 +380,20 @@ const ModuleCollectionFields = {
     }
 };
 
-Meteor.publish(`module/${Meteor.settings.remotes[moduleId].publication}`, function () {
-    // Return only those document(s) where active is true (the file list is up to date) or where `active` field
-    // is not present at all (ModuleCollection has not been automatically updated yet)
-    Log.debug(`module/${Meteor.settings.remotes[moduleId].publication}`, this.userId);
-    if (this.userId) {
-        return ModuleCollection.find( {'userId': this.userId}, ModuleCollectionFields);
-    } else {
+Meteor.publish(`module/${Meteor.settings.remotes[moduleId].publication}`, function (token) {
+    Log.debug(`module/${Meteor.settings.remotes[moduleId].publication}`, token);
+
+    let verifyOptions = {
+        algorithm: ["ES512"]
+    };
+    let publicKEY = connection.server_public_key;
+    let telegram: any = {};
+    try {
+        telegram = jwt.verify(token, publicKEY, verifyOptions);
+    } catch (err) {
+        Log.error("Failed to verify token", err);
         this.ready();
     }
+
+    return ModuleCollection.find( {'userId': telegram.userId}, ModuleCollectionFields);
 });
