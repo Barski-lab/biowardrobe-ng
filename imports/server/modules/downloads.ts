@@ -81,6 +81,10 @@ class AriaDownload {
         }
     }
 
+    private _updateDownloadStatus(sampleId: any, progress: any): Observable<any>{
+        return AirflowProxy.master_progress_update(sampleId, {progress} as any)
+    }
+
     constructor() {
         let self = this;
 
@@ -99,10 +103,20 @@ class AriaDownload {
                     tap( (w: any) => Log.debug("Open WebSocket to", w.target.url) ),
                     mergeMap( () => self._nextToDownload$.asObservable() ),
                     tap( ({_id, data}) => Log.debug("Update Downloads collection", _id) ),
-                    mergeMap( ({_id, data}) => self._addDownload(data.uri, data.path, data.header).pipe(
-                                                    map( (downloadId: string) => {
-                                                        data["_id"] = _id;
-                                                        return {data, downloadId}}))),
+                    mergeMap( ({_id, data}) => self._addDownload(data.uri, data.path, data.header)
+                        .pipe(
+                            map( (downloadId: string) => {
+                                data["_id"] = _id;
+                                return {data, downloadId}
+                            }))),
+                    mergeMap ( ({data, downloadId}) => this._updateDownloadStatus(data.sampleId, {"title": "Download", "progress": 0})
+                        .pipe(
+                            map( (res: any) => {
+                                if (res.error && res.message){
+                                    Log.debug("Failed to submit downloading status", res.message);
+                                }
+                                return {data, downloadId}
+                            }))),
                     tap( ({data, downloadId}) => Log.debug("Schedule new download with downloadId", downloadId) ))
                 .subscribe(
                     ({data, downloadId}) => self._downloadQueue[downloadId] = data,
@@ -220,6 +234,12 @@ class AriaDownload {
             Downloads.update({"_id": doc._id}, {$set: {"error": errorMsg}});
             delete this._downloadQueue[downloadId];
             this._events$.next( {"sampleId": doc.sampleId, "error": errorMsg} );
+            this._updateDownloadStatus(doc.sampleId, {"title": "Error", "progress": 0, "error": errorMsg})
+                .subscribe( (res: any) => {
+                    if (res.error && res.message){
+                        Log.debug("Failed to submit downloading status", res.message);
+                    }
+                });
         }
     }
 
