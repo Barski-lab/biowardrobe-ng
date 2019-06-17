@@ -30,6 +30,7 @@ interface Info {
     moduleId: string;
     caption?: string;
     type?: string;
+    mainUrl?: string;
     loginUrl?: string;
     viewListUrl?: string;
     downloadUrl?: string;
@@ -234,19 +235,35 @@ class PostFormModule implements BaseModuleInterface {
             cookiesJar.setCookie(cookie, this._info.viewListUrl);
             return this.getRawDataHelper(cookiesJar);
         } else {
-            return this.startLoginProcess(params)
+            return this.preLoginProcess(params)
+                .then((c: any) => this.startLoginProcess(c.cookiesJar, c.params))
                 .then((c) => this.getRawDataHelper(c))
                 .catch((err) => Log.error('getRawData:', err));
         }
+    }
+
+    private preLoginProcess (params: any){
+        return new Promise((resolve, reject) => {
+            const cookiesJar = request.jar();
+            request(
+                {
+                    method: 'GET',
+                    uri: this._info.mainUrl,
+                    jar: cookiesJar
+                },
+                (error, res, body) => {
+                    return ( error ) ? reject( {type: "prelogin", error} ) : resolve( {cookiesJar, params} );
+                }
+            );
+        });
     }
 
     /**
      *
      * @param params
      */
-    private startLoginProcess (params: {login: string, pass: string, session?: string} ){
+    private startLoginProcess (cookiesJar: any, params: {login: string, pass: string, session?: string} ){
         return new Promise((resolve, reject) => {
-            const cookiesJar = request.jar();
             let _req = {
                 method: 'POST',
                 uri: this._info.loginUrl,
@@ -264,7 +281,6 @@ class PostFormModule implements BaseModuleInterface {
                         error
                     }) : resolve(cookiesJar);
                 }
-
             );
         });
     }
