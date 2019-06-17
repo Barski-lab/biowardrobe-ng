@@ -363,7 +363,7 @@ class PostFormModule implements BaseModuleInterface {
         let basename = path.basename(fileUrl.path);
         let data = ModuleCollection.findOne( { "userId": userId, "list.files":  basename } );
         return { "url": data.list.links[data.list.files.indexOf(basename)], 
-                 "basename": basename,
+                 "basename": basename.replace("=","_"),
                  "header": `Cookie:session=${data.session}`}
     }
 
