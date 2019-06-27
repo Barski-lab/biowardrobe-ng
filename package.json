@@ -47,6 +47,7 @@
     "express-session": "^1.14.2",
     "fast-csv": "^2.4.1",
     "htmlparser2": "^3.9.2",
+    "http-proxy": "^1.17.0",
     "js-yaml": "3.10.0",
     "jsonwebtoken": "^8.4.0",
     "ldapjs": "^1.0.0",
