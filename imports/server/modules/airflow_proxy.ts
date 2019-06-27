@@ -182,12 +182,7 @@ export class AirflowProxy {
             return of({ error: true, message: `Project is not for analysis yet ${sample_id}`});
         }
 
-        if (sample.invalid_import){
-            FileUploadCollection.remove({"meta.isOutput": true, "meta.sampleId": sample._id});
-        } else {
-            // Do not run this in test will delete local files!!!
-            FilesUpload.remove({"meta.isOutput": true, "meta.sampleId": sample._id}, (err) => err?Log.error(err): "" );
-        }
+        FilesUpload.remove({"meta.isOutput": true, "meta.sampleId": sample._id}, (err) => err?Log.error(err): "" );
 
         let cwl: any = CWLCollection.findOne({_id: sample.cwlId});
         if (!cwl) {
@@ -475,7 +470,10 @@ export class AirflowProxy {
                 title: "Error",
                 progress: 0,
                 error: message
-            }
+            };
+
+            airflowQueueCollection.remove({sample_id: sample._id});
+
         } else if (warning) {
                 Log.error("Cleanup:", message);
                 progress = {
