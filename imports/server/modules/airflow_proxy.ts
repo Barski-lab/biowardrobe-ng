@@ -9,14 +9,17 @@ import {
     map,
     filter,
     tap,
-    mergeMap
+    mergeMap,
+    delay, concatMap
 } from 'rxjs/operators';
-import { Observable } from 'rxjs';
+import { Observable, Subscriber, Subject } from 'rxjs';
 import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
 import { of } from 'rxjs/observable/of';
 
 import { FileData, FileObj, FilesCollection } from 'meteor/ostrio:files';
 import { FilesUpload, FileUploadCollection } from '../methods/filesupload';
+
+import { WorkflowsGitFetcher } from '../methods/git';
 
 import { CWLCollection, Samples, airflowQueueCollection } from '../../collections/shared';
 import { ariaDownload } from './downloads'
@@ -27,19 +30,62 @@ import * as mime from 'mime';
 import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import * as zlib from 'zlib';
-import { WorkflowsGitFetcher } from '../methods/git';
+
+let pdelay = (data, delay) => {
+    return Observable.create(Meteor.bindEnvironment((observer: Subscriber<any>) => {
+        Meteor.setTimeout(() => {
+            observer.next(data);
+            observer.complete();
+        }, delay);
+    }));
+};
 
 export class AirflowProxy {
 
     private app:any = undefined;
     private routes = undefined;
 
+    private static listen$: Subject<any> = new Subject();
+
     constructor () {
         this.initRoutes ();
-        // //TEMPORARY:
-        // let outputs = AirflowProxy.update_results(test_sample, Samples.findOne({_id: "cjyqCLwBaaKAyLPEo"}));
-        // Log.debug(outputs);
-        // AirflowProxy.master_progress_update("cjyqCLwBaaKAyLPEo", {progress: null, ...outputs}).subscribe(r => Log.debug(r));
+
+        AirflowProxy.listen$
+            .pipe(
+                filter(({dag_id, run_id, results}) => dag_id === 'clean_dag_run'),
+                concatMap((d: any) => pdelay(d, 2000)),
+                switchMap(({dag_id, run_id, results}) => {
+                    Log.debug(`Successfully cleaned! ${run_id}`);
+                    //FIXME: probably memory leak, replace with stream of dags to clean
+                    return AirflowProxy.trigger_dag(run_id)
+                        .pipe(
+                            switchMap(({result, error, message, sample}) => {
+                                let progress: any = null;
+                                if (error) {
+                                    Log.error("AirflowProxy.trigger_dag:", message);
+                                    progress = {
+                                        title: "Error",
+                                        progress: 0,
+                                        error: message
+                                    }
+                                } else if (result) {
+                                    Log.debug("AirflowProxy.trigger_dag:", result);
+                                    progress = {
+                                        title: "Queued",
+                                        progress: 0
+                                    }
+                                }
+                                if (progress && sample) {
+                                    return AirflowProxy.master_progress_update(sample._id, {progress} as any)
+                                } else {
+                                    return of({error: true, message: `No sample ${progress}`});
+                                }
+                            }),
+                            catchError((e) => of({error: true, message: `Error: ${e}`}))
+                        )
+
+                })
+            ).subscribe((r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
     }
 
     /**
@@ -100,7 +146,10 @@ export class AirflowProxy {
             })
             .pipe(
                 map((result) => ({result, sample})),
-                catchError((e) => of({ error: true, message: `Airflow POST: ${e}`, sample: sample }))
+                catchError((e) => {
+                    Log.error('airflow_post error:', e);
+                    return of({ error: true, message: `Airflow POST: ${e}`, sample: sample });
+                })
             );
     }
 
@@ -198,7 +247,7 @@ export class AirflowProxy {
         };
 
         let dag_id = `${cwl._id}-${cwl.git.sha}`; // path.basename(cwl.git.path, ".cwl");
-        
+
         Samples.update({"_id": sample_id}, {$set: {"dag_id": dag_id}});
 
         /**
@@ -241,44 +290,17 @@ export class AirflowProxy {
             return next();
         }
 
+
+        AirflowProxy.listen$.next(body.payload);
+
         Log.debug('Listen process status:', body.payload);
 
         let {dag_id, run_id, results} = body.payload;
-
         /**
          * At first we had to clean previous DAG run,
          * So if report from cleaning DAG, we trigger queued DAG
          */
         if (dag_id === 'clean_dag_run') {
-            Log.debug(`Successfully cleaned! ${run_id}`);
-            //FIXME: probably memory leak, replace with stream of dags to clean
-            AirflowProxy.trigger_dag(run_id)
-                .pipe(
-                    switchMap(({result, error, message, sample}) => {
-                        let progress: any = null;
-                        if (error) {
-                            Log.error("AirflowProxy.trigger_dag:", message);
-                            progress = {
-                                title: "Error",
-                                progress: 0,
-                                error: message
-                            }
-                        } else if (result) {
-                            Log.debug("AirflowProxy.trigger_dag:", result);
-                            progress = {
-                                title: "Queued",
-                                progress: 0
-                            }
-                        }
-                        if (progress && sample) {
-                            return AirflowProxy.master_progress_update(sample._id, {progress} as any)
-                        } else {
-                            return of({error: true, message: `No sample ${progress}`});
-                        }
-                    }),
-                    catchError((e) => of({error: true, message: `Error: ${e}`}))
-                )
-                .subscribe((r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
             return next();
         }
 
@@ -342,20 +364,20 @@ export class AirflowProxy {
          * Update progress report to the master
          */
         let progress_to_master: any = null;
-            if (error) {
-                Log.error({dag_id, run_id, state, progress, error});
-                progress_to_master = {
-                    error,
-                    progress,
-                    title: "Error"
-                }
-            } else {
-                Log.debug({dag_id, run_id, state, progress});
-                progress_to_master = {
-                    progress,
-                    title: state // TODO: ?? Send state?
-                }
+        if (error) {
+            Log.error({dag_id, run_id, state, progress, error});
+            progress_to_master = {
+                error,
+                progress,
+                title: "Error"
             }
+        } else {
+            Log.debug({dag_id, run_id, state, progress});
+            progress_to_master = {
+                progress,
+                title: state // TODO: ?? Send state?
+            }
+        }
 
         let outputs: any = null;
         AirflowProxy.master_progress_update(run_id, {progress: progress_to_master, outputs}).subscribe(r => Log.debug(r));
@@ -475,12 +497,12 @@ export class AirflowProxy {
             airflowQueueCollection.remove({sample_id: sample._id});
 
         } else if (warning) {
-                Log.error("Cleanup:", message);
-                progress = {
-                    title: "Warning",
-                    progress: 0,
-                    warning: message
-                }
+            Log.error("Cleanup:", message);
+            progress = {
+                title: "Warning",
+                progress: 0,
+                warning: message
+            }
         } else if (result) {
             Log.debug("Cleanup:", result);
             progress = {
@@ -514,6 +536,7 @@ Meteor.startup(() => {
             // @ts-ignore
             filter(({name, event, id}) => name == 'samples' && ['added', 'changed'].includes(event)),
             filter(({name, event, id}) => ariaDownload.checkInputs(id)),
+            concatMap((d: any) => pdelay(d, 2000)),
             switchMap(({name, event, id}) => { // collection name, event {added, changed, removed}, id - sample id
                 return airflowProxy.cleanup_dag(id);
             }),
@@ -523,6 +546,7 @@ Meteor.startup(() => {
             catchError((e) => of({ error: true, message: `Error: ${e}` }))
         )
         .subscribe( (r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
+
 
     ariaDownload.events$
         .pipe(
@@ -536,7 +560,7 @@ Meteor.startup(() => {
             }),
             catchError((e) => of({ error: true, message: `Error: ${e}` }))
         )
-        .subscribe( (r: any) => r && r.error ? Log.error(r) : Log.debug(r) );       
+        .subscribe( (r: any) => r && r.error ? Log.error(r) : Log.debug(r) );
 
     // For testing
     // connection._main_events$.next({name: "samples", event: 'added', id: "nvYBtNTDTyetcKdBn"});
