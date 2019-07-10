@@ -110,4 +110,14 @@
             "format": "http://edamontology.org/format_1930"
         },
    ```
-   Make sure to set protocol to `core:` for the remote module to process the download (in `settings.json`). Additionally, all the required URLs for this specific module should be properly configured.
+   Make sure to set protocol to `core` for the remote module to process the download (in `settings.json`). Additionally, all the required URLs for this specific module should be properly configured.
+
+4. To download data from `GEO` file input should look the following way
+   ```yaml
+        "fastq_file": {
+            "class": "File",
+            "location": "geo://SRR123456,SRR234567",
+            "format": "http://edamontology.org/format_1930"
+        },
+   ```
+   Make sure to set protocol to `geo` for the remote module to process the download (in `settings.json`). Comma-separated list of SRR will be merged in one file (paired-end data will be merged properly). In case of paired-end data the first occurance of `geo://` input will be assumed to be upstream, the next one - downstream. `fastq-dump` should be installed. To make `fastq-dump` work faster make sure to enable cache in SRA Toolkit configuration file (see `~/.ncbi` directory)

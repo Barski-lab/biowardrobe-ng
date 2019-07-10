@@ -2,13 +2,16 @@ import { Meteor } from 'meteor/meteor';
 import { Log } from '../logger';
 import { moduleLoader } from './moduleloader';
 import { BaseModuleInterface } from './base.module.interface';
+import { Downloads } from '../../../collections/shared';
+
+
 const path = require('path');
 
 
 const moduleId = path.basename(__filename).substring(0, path.basename(__filename).lastIndexOf("."));
 
 
-class DirectUrlModule implements BaseModuleInterface {
+class GeoModule implements BaseModuleInterface {
 
     private _info: any = null;
 
@@ -38,14 +41,19 @@ class DirectUrlModule implements BaseModuleInterface {
     }
 
     public getFile(fileUrl: any, userId?: any, sampleId?: any) {
-        return { "url": fileUrl.href, 
-                 "basename": path.basename(fileUrl.path),
-                 "header": ""}
+        let url = fileUrl.href.replace("geo://", "").replace("/", "").replace(/,/g, " ").toUpperCase();
+        let suffix = "";
+        if (Downloads.findOne( {"sampleId": sampleId, "uri": url, "userId": userId})){
+            suffix = "_2";
+        }
+        return { "url":      url,
+                 "basename": url.replace(/ /g, "_").toLowerCase() + suffix + ".fastq.bz2",
+                 "header": "geo"}
     }
 
 }
 
 
 Meteor.startup(() => {
-    moduleLoader.addModule (new DirectUrlModule());
+    moduleLoader.addModule (new GeoModule());
 });

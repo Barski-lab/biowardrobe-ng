@@ -90,7 +90,7 @@ class LocalFilesModule implements BaseModuleInterface {
         };
     }
 
-    public getFile(fileUrl: any, userId?: any) {
+    public getFile(fileUrl: any, userId?: any, sampleId?: any) {
         return { "url": path.join( this._info.base_directory, path.resolve("/", fileUrl.path) ), 
                  "basename": path.basename(fileUrl.path),
                  "header": "copy"}

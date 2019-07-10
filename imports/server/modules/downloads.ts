@@ -19,6 +19,7 @@ const aria2 = require("aria2");
 const path = require("path");
 const url = require('url');
 const fs = require('fs');
+const exec = require('child_process').exec;
 
 // For testing:
 // Listen only on localhost:6800, no encryion enabled, no secret token
@@ -71,8 +72,74 @@ class AriaDownload {
         });
     };
 
+    private _downloadFromGeo(downloadUri: any, destinationPath: any, downloadId: any) {
+        let dir = path.dirname(destinationPath);
+        
+        if (destinationPath.indexOf("_2.fastq.bz2") > -1){
+            Log.debug("Skip download. Already downloading from GEO", downloadUri, "to", dir);
+            return;
+        }
+        
+        Log.debug("Download file(s) from GEO", downloadUri, "to", dir);
+
+        try {
+            fs.mkdirSync(dir, {recursive: true});
+        } catch (err) {
+            Log.error('Failed to create directory', err);
+        }
+
+        let base = path.basename(destinationPath, ".fastq.bz2");
+        let fastq_dump =`
+            cd ${dir}
+            for U in $(echo ${downloadUri}) 
+            do
+                fastq-dump --split-3 -B $\{U\}
+            
+                if [ -f $\{U\}_1.fastq ]; then
+                mv -f "$\{U\}_1.fastq" "$\{U\}".fastq
+                fi
+            
+                cat "$\{U\}.fastq" >> "${base}".fastq
+                
+                if [ -f "$\{U\}_2.fastq" ]; then
+                cat "$\{U\}_2.fastq" >> "${base}"_2.fastq
+                fi
+                
+                rm -f "$\{U\}.fastq"
+                rm -f "$\{U\}_2.fastq"
+            done
+            bzip2 "${base}"*.fastq`;
+
+        exec(fastq_dump, (err: any, stdout: any, stderr: any) => {
+            // Log.debug('Check download queue for paired end input data', this._downloadQueue);
+            let paired_downloadId = Object.keys(this._downloadQueue).find(key => {
+                let paired_uri = this._downloadQueue[key].uri;
+                let paired_file = this._downloadQueue[key].path;
+                let paired_dir = path.dirname(paired_file);
+                return paired_uri === downloadUri && paired_dir === dir && paired_file.indexOf("_2.fastq.bz2") > -1
+            })
+            if (err || stderr.indexOf("item not found") > -1) {
+                Log.error('Failed to download file from GEO', stderr);
+                this._waitForCopy$.next({"downloadId": downloadId, "error": stderr});
+                if (paired_downloadId){
+                    this._waitForCopy$.next({"downloadId": paired_downloadId, "error": stderr});
+                }
+            } else {
+                this._waitForCopy$.next({"downloadId": downloadId});
+                if (paired_downloadId){
+                    this._waitForCopy$.next({"downloadId": paired_downloadId});
+                }
+            }
+        });
+    };
+
     private _addDownload(downloadUri: any, destinationPath: any, header: any): Observable<any> {
-        if (header == "copy"){
+        if (header == "geo"){
+            let downloadId = Random.id();
+            this._downloadFromGeo(downloadUri, destinationPath, downloadId);
+            return of(downloadId);
+        }
+        else if (header == "copy"){
             let downloadId = Random.id();
             this._copyLocalFile(downloadUri, destinationPath, downloadId);
             return of(downloadId);
@@ -151,7 +218,7 @@ class AriaDownload {
                         return false;
                     }
                     Log.debug("Found module", module.getInfo().caption);
-                    const fileData = module.getFile(fileUrl, sample.userId);
+                    const fileData = module.getFile(fileUrl, sample.userId, sampleId);
                     Log.debug("fileData received from module", fileData);
 
                     let telegram: any;

@@ -359,7 +359,7 @@ class PostFormModule implements BaseModuleInterface {
         return Promise.resolve({files: fileList, links: fileLinks, cookies: rawDataWithSession.cookies._jar.toJSON()});
     }
 
-    public getFile(fileUrl: any, userId: any) {
+    public getFile(fileUrl: any, userId?: any, sampleId?: any) {
         let basename = path.basename(fileUrl.path);
         let data = ModuleCollection.findOne( { "userId": userId, "list.files":  basename } );
         return { "url": data.list.links[data.list.files.indexOf(basename)], 
