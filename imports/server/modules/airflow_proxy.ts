@@ -396,30 +396,36 @@ export class AirflowProxy {
 
         let outputs: any = {};
 
-        let getMimeType = (filePath: any) => {
+        let addOutputFile = (sample: any, location: any, basename: any) => {
+            location = location.replace('file://','');
+            let mimeType = "application/octet-stream";
             try {
-                return mime.getType(filePath);
+                mimeType = mime.getType(location);
             }
-            catch(e) {
-                return "application/octet-stream";
+            catch(e){
+                Log.debug("Failed to define the mimeType of", location);
             }
-        }
 
-        let getOpts = (sample: any, filePath: any, fileName: any) => {
-            let meta = {
-                projectId: sample.projectId,
-                sampleId: sample._id,
-                userId: sample.userId,
-                isOutput: true
+            let opts = {
+                meta: {
+                    projectId: sample.projectId,
+                    sampleId: sample._id,
+                    userId: sample.userId,
+                    isOutput: true
+                },
+                fileName: basename, 
+                userId: sample.userId, 
+                fileId: Random.id(), 
+                type: mimeType
             };
-            return {meta, fileName, userId: sample.userId, fileId: Random.id(), type: getMimeType(filePath)};
-        };
+            
+            FilesUpload.addFile(location, opts, (err) => err?Log.error(err): "" );
+            return opts.fileId;
+        }
 
         let processDirectory = (sample:any, output_data: any) => {
             if (output_data.class === "File") {
-                let opts = getOpts(sample, output_data.location.replace('file://',''), output_data.basename);
-                FilesUpload.addFile(output_data.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
-                output_data['_id'] = opts.fileId;
+                output_data['_id'] = addOutputFile(sample, output_data.location, output_data.basename);
             } else {
                 for ( const i in output_data.listing ) {
                     processDirectory(sample, output_data.listing[i])
@@ -427,31 +433,34 @@ export class AirflowProxy {
             }
         };
 
-        for ( const output_key in results ) {
-            if (results[output_key] && results[output_key].class === 'File' ) {
-
-                let opts = getOpts(sample, results[output_key].location.replace('file://',''), `${output_key}${results[output_key].nameext}`);
-                FilesUpload.addFile(results[output_key].location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
-
-                outputs[output_key] = results[output_key];
-                outputs[output_key]['_id'] = opts.fileId;
-
-                if (results[output_key].secondaryFiles && results[output_key].secondaryFiles.length >0 ) {
-                    outputs[output_key].secondaryFiles = results[output_key].secondaryFiles.map( (sf, index) => {
-
-                        let opts = getOpts(sample, sf.location.replace('file://',''), `${output_key}_${index}${sf.nameext}`);
-                        FilesUpload.addFile(sf.location.replace('file://',''), opts, (err) => err?Log.error(err): "" );
-                        sf['_id'] = opts.fileId;
-
-                        return sf;
-                    })
-                }
-            } else if (results[output_key] && results[output_key].class === 'Directory') {
-                processDirectory(sample, results[output_key]);
-                outputs[output_key] = results[output_key]
-            } else {
-                outputs[output_key] = results[output_key];
+        let processFile = (sample:any, output_data: any, output_key: any) => {
+            output_data['_id'] = addOutputFile(sample, output_data.location, `${output_key}${output_data.nameext}`);
+            if (output_data.secondaryFiles && output_data.secondaryFiles.length > 0 ) {
+                output_data.secondaryFiles = output_data.secondaryFiles.map( (sf: any, index: any) => {
+                    sf['_id'] = addOutputFile(sample, sf.location, `${output_key}_${index}${sf.nameext}`);
+                    return sf;
+                })
             }
+        }
+
+        let processFileArray = (sample:any, output_data: any) => {
+            for ( const i in output_data ) {
+                output_data[i]['_id'] = addOutputFile(sample, output_data[i].location, output_data[i].basename);
+            }
+        };
+
+        for ( const output_key in results ) {
+            let output_data = results[output_key];
+            if (!output_data){                                                                       // process null
+                continue;
+            } else if (output_data.class === 'File' ) {                                              // process File
+                processFile(sample, output_data, output_key);
+            } else if (output_data.class === 'Directory') {                                          // process Directory
+                processDirectory(sample, output_data);
+            } else if (Array.isArray(output_data) && output_data.every(k => k.class === "File")) {   // process File[]
+                processFileArray(sample, output_data);
+            }
+            outputs[output_key] = output_data
         }
         return outputs;
     }
