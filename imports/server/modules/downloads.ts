@@ -209,12 +209,12 @@ class AriaDownload {
         if (sample && sample["inputs"]) {
             const inputs = sample["inputs"];
             for (const key in inputs) {
-                if (inputs[key] && inputs[key].location && !inputs[key].location.startsWith("file://")) {
+                if (inputs[key] && inputs[key].location && !(inputs[key].location.startsWith("file://") || inputs[key].location.startsWith("/"))) {
                     Log.debug("Process input", key, inputs[key].location);
                     const fileUrl = url.parse(inputs[key].location);
                     const module = moduleLoader.getModule(fileUrl);
                     if (!module){
-                        Log.error("Failed find module for protocol", fileUrl.protocol.replace(":",""));
+                        Log.error("Failed find module for protocol:", (fileUrl.protocol||"none").replace(":",""));
                         return false;
                     }
                     Log.debug("Found module", module.getInfo().caption);
