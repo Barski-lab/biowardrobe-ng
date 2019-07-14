@@ -3,7 +3,6 @@ import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { BrowserModule } from '@angular/platform-browser';
-// import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 import { AppComponent } from './app/app.component';
 import { AppRouting } from './app.routing';
@@ -21,7 +20,6 @@ import { AuthModule } from '../auth/auth.module';
         CommonModule,
         BrowserModule,
         FormsModule,
-        // BrowserAnimationsModule,
         ReactiveFormsModule,
         RouterModule,
         AppRouting,

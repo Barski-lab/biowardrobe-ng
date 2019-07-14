@@ -12,9 +12,7 @@ import {
     mergeMap,
     delay, concatMap
 } from 'rxjs/operators';
-import { Observable, Subscriber, Subject } from 'rxjs';
-import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
-import { of } from 'rxjs/observable/of';
+import { Observable, Subscriber, Subject, bindNodeCallback, of } from 'rxjs';
 
 import { FilesUpload, FileUploadCollection } from '../methods/filesupload';
 

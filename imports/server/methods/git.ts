@@ -88,7 +88,7 @@ export class WorkflowsGitFetcher {
     }
 
     static expandEmbedded(dataObj, basedir){
-        if (_.isObject(dataObj) && !_.isArray(dataObj)){
+        if (typeof dataObj === 'object' && !Array.isArray(dataObj)){
             Object.keys(dataObj).forEach((key) => {
                 if (key === "run" && typeof dataObj[key] === "string"){
                     let absRunPath = path.join(basedir, dataObj[key]);
@@ -103,7 +103,7 @@ export class WorkflowsGitFetcher {
                     WorkflowsGitFetcher.expandEmbedded(dataObj[key], basedir)
                 }
             });
-        } else if (_.isArray(dataObj)){
+        } else if (Array.isArray(dataObj)){
             dataObj.forEach((item)=>{
                 WorkflowsGitFetcher.expandEmbedded(item, basedir)
             })
@@ -112,10 +112,10 @@ export class WorkflowsGitFetcher {
 
 
     static removeMetadata(dataObj, excludeKeys:any = ["$namespaces", "$schemas", "doc"]){
-        if (_.isObject(dataObj) && !_.isArray(dataObj)){
+        if ( typeof dataObj === 'object' && !Array.isArray(dataObj)){
             Object.keys(dataObj).forEach((key) => {
                 if (key === "$namespaces"
-                    && _.isObject(dataObj[key]) && !_.isArray(dataObj[key])
+                    && typeof dataObj[key] === 'object' && !Array.isArray(dataObj[key])
                     && Object.keys(dataObj[key]).length > 0){
 
                     Object.keys(dataObj[key]).forEach((namespace)=>{
@@ -134,7 +134,7 @@ export class WorkflowsGitFetcher {
                 }
                 WorkflowsGitFetcher.removeMetadata(dataObj[key], excludeKeys);
             });
-        } else if (_.isArray(dataObj)){
+        } else if (Array.isArray(dataObj)){
             dataObj.forEach((item)=>{
                 WorkflowsGitFetcher.removeMetadata(item, excludeKeys);
             })

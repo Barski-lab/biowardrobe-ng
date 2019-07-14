@@ -45,7 +45,7 @@ export class oauth2Model {
     );
 
     grantTypeAllowed = Meteor.bindEnvironment( (clientId, grantType, callback) => {
-            let _allowed = _.indexOf( Meteor.settings['oauth2server'].grant_type, grantType ) > -1;
+            let _allowed = Meteor.settings['oauth2server'].grant_type.includes(grantType);
             Log.debug('[OAuth2Server] in grantTypeAllowed : ',_allowed);
             return callback(false, _allowed);
         }

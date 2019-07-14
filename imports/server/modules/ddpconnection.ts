@@ -6,11 +6,9 @@
 import { DDP } from 'meteor/ddp';
 import { Mongo } from 'meteor/mongo';
 
-import { BehaviorSubject, Observable, Subscriber, Subject } from 'rxjs';
+import { of, BehaviorSubject, Observable, Subscriber, Subject, fromEventPattern } from 'rxjs';
 import { switchMap, catchError, filter, shareReplay, merge, share } from 'rxjs/operators';
-import { combineLatest } from 'rxjs/observable/combineLatest';
-import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
-import { of } from 'rxjs/observable/of';
+
 
 import { CWLCollection, Labs, Projects, Samples, Requests } from '../../collections/shared';
 
@@ -261,7 +259,7 @@ export class DDPConnection {
             throw Error('DDPConnection.call: callback will be provided');
         }
 
-        return Observable.create(Meteor.bindEnvironment( (observer: Subscriber<Meteor.Error | T>) => {
+        return new Observable(Meteor.bindEnvironment( (observer: Subscriber<Meteor.Error | T>) => {
             return DDPConnection.DDPConnection.call(name, ...args.concat([
                 (error: Meteor.Error, result: T) => {
                     error ? observer.error(error) : observer.next(result);
@@ -276,7 +274,7 @@ export class DDPConnection {
         onResultReceived?: Function;
     }): Observable<T> {
 
-        return Observable.create((observer: Subscriber<Meteor.Error | T>) => {
+        return new Observable((observer: Subscriber<T>) => {
             DDPConnection.DDPConnection.apply(name, args, options,
                 (error: Meteor.Error, result: T) => {
                     error ? observer.error(error) : observer.next(result);
@@ -293,7 +291,7 @@ export class DDPConnection {
     public static subscribeAutorun<T>(name: string, ...args: any[]): Observable<T> {
         let lastParam = args[args.length - 1];
 
-        if (!_.isFunction(lastParam)) {
+        if (typeof lastParam !== 'function') {
             Log.debug('last param has to be a function');
             return;
         }
@@ -302,7 +300,7 @@ export class DDPConnection {
 
         let autoHandler = null;
         let subHandler = null;
-        return Observable.create((observer: Subscriber<Meteor.Error | T>) => {
+        return new Observable((observer: Subscriber<T>) => {
             if (subHandler === null) {
                 subHandler = DDPConnection.DDPConnection.subscribe(name, ..._args.concat([{
                     onError: (error: Meteor.Error) => {
@@ -368,13 +366,13 @@ export declare type MeteorCallbacks = ((...args) => any) | CallbacksObject;
 export const subscribeEvents = ['onReady', 'onError', 'onStop'];
 
 export function isMeteorCallbacks(callbacks: any): boolean {
-    return _.isFunction(callbacks) || isCallbacksObject(callbacks);
+    return typeof callbacks === 'function' || isCallbacksObject(callbacks);
 }
 
 // Checks if callbacks of {@link CallbacksObject} type.
 export function isCallbacksObject(callbacks: any): boolean {
     return callbacks && subscribeEvents.some((event) => {
-        return _.isFunction(callbacks[event]);
+        return typeof callbacks[event] === 'function';
     });
 }
 

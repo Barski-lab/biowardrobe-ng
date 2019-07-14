@@ -10,12 +10,11 @@ import {
     tap,
     mergeMap, reduce
 } from 'rxjs/operators';
-import { Observable } from 'rxjs';
-import { of } from 'rxjs/observable/of';
+import { Observable, of } from 'rxjs';
 
 import { FilesUpload } from '../methods/filesupload';
 
-import * as csv from 'fast-csv'; // 'fast-csv'; // 'csv-parser';
+import * as csv from 'fast-csv';
 import * as fs from 'fs';
 
 import { Log } from './logger';

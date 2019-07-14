@@ -1,9 +1,6 @@
 import { Meteor } from 'meteor/meteor';
-import { Observable, Subject } from 'rxjs';
-import { fromEvent } from 'rxjs/observable/fromEvent';
-import { fromPromise } from 'rxjs/observable/fromPromise';
+import { Observable, Subject, fromEvent, of, from as observableFrom } from 'rxjs';
 import { tap, map, merge, mergeMap } from 'rxjs/operators';
-import { of } from 'rxjs/observable/of';
 
 import { Downloads, Samples } from '../../collections/shared';
 import { moduleLoader } from './remotes/moduleloader';
@@ -38,7 +35,7 @@ class AriaDownload {
     }
 
     private _openWebSocket(): Observable<any> {
-        return fromPromise(this._aria.open())
+        return observableFrom(this._aria.open())
     };
 
     private _downloadComplete(): Observable<any> {
@@ -144,7 +141,7 @@ class AriaDownload {
             this._copyLocalFile(downloadUri, destinationPath, downloadId);
             return of(downloadId);
         } else {
-            return fromPromise(this._aria.call("addUri", [downloadUri], {"dir": path.dirname(destinationPath), "out": path.basename(destinationPath), "header": header}))
+            return observableFrom(this._aria.call("addUri", [downloadUri], {"dir": path.dirname(destinationPath), "out": path.basename(destinationPath), "header": header}))
         }
     }
 

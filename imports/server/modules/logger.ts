@@ -18,12 +18,13 @@ export function createLogger(options?) {
     else
         stream.stream = process.stdout;
 
-    opts = _.defaults(options||{}, {
+    options = options || {};
+    opts = {...options,
         name: "BioWardrobe-NG",
         src: Meteor.settings["logLevel"] == 'debug',
         streams: [ stream ],
         level: Meteor.settings["logLevel"]
-    });
+    };
 
     _Logger = bunyan.createLogger(opts);
 

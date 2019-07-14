@@ -16,6 +16,7 @@ standard-minifier-js@2.4.1    # JS minifier run for production mode
 es5-shim@4.8.0                # ECMAScript 5 compatibility for older browsers.
 ecmascript@0.12.4            # Enable ECMAScript2015+ syntax in app code
 dynamic-import@0.5.1
+shell-server@0.4.0
 
 angular-compilers
 
@@ -33,8 +34,6 @@ service-configuration@1.0.11
 ddp-rate-limiter@1.0.7
 
 zuuk:stale-session
-xolvio:cleaner
+#xolvio:cleaner
 
-underscore@1.0.10
-#shell-server@0.4.0
-#nourharidy:ssl
+#underscore@1.0.10

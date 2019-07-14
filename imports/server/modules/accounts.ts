@@ -143,7 +143,8 @@ export function setExtraUsers (){
 }
 
 Accounts.onLogin(function (login) {
-    Log.debug('onLogin:',login.user._id,_.omit(login,["user","methodArguments"]));
+    let {user,methodArguments, ...other} = login;
+    Log.debug('onLogin:', login.user._id, other);
     let ou = {};
     ou['heartbeat']=ou['profile.lastLogin'] = new Date();
 
@@ -160,7 +161,7 @@ export function configAccounts(){
     Accounts.emailTemplates.siteName = Meteor.settings['name'];
     Accounts.emailTemplates.from = Meteor.settings.email.from;
 
-    Accounts['urls'] = _.extend(Accounts['urls'],{
+    Accounts['urls'] = {...Accounts['urls'],
         resetPassword: function (token) {
             Log.debug('resetPassword: ' + Meteor.settings.base_url+"reset/" + token);
             return Meteor.settings.base_url+"reset/" + token;
@@ -169,12 +170,11 @@ export function configAccounts(){
             Log.debug('enrollAccount: ' + Meteor.settings.base_url+"enroll/" + token);
             return Meteor.settings.base_url+"enroll/" + token;
         }
-    });
+    };
 
-    Accounts.config(_.defaults({
+    Accounts.config({
             sendVerificationEmail: true,       // TODO maybe we don't need it, if we use only enrollment email
             forbidClientAccountCreation: true,
-            loginExpirationInDays: 7
-        },
-        Meteor.settings['accounts']));
+            loginExpirationInDays: 7,
+            ...Meteor.settings['accounts']});
 }

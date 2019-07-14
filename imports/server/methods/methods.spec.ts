@@ -12,9 +12,9 @@ describe('server', function() {
             describe('#forgotPassword()', function() {
                 before(function() {
                     resetDatabase();
-                    Meteor.settings  = _.extend(Meteor.settings, {
+                    Meteor.settings  = {...Meteor.settings,
                         "extra_users":["user-1@domain.com", "user-2@your-domain.com"]
-                    });
+                    };
                     setExtraUsers();
                 });
 

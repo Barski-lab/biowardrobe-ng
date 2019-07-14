@@ -7,7 +7,7 @@ export class MeteorObservable {
     public static subscribeAutorun<T>(name: string, ...args: any[]): Observable<T> {
         let lastParam = args[args.length - 1];
 
-        if (!_.isFunction(lastParam)) {
+        if (typeof lastParam !== 'function') {
             console.log('last param has to be a function');
             return;
         }
@@ -119,13 +119,13 @@ export declare type MeteorCallbacks = ((...args) => any) | CallbacksObject;
 export const subscribeEvents = ['onReady', 'onError', 'onStop'];
 
 export function isMeteorCallbacks(callbacks: any): boolean {
-    return _.isFunction(callbacks) || isCallbacksObject(callbacks);
+    return typeof callbacks === 'function' || isCallbacksObject(callbacks);
 }
 
 // Checks if callbacks of {@link CallbacksObject} type.
 export function isCallbacksObject(callbacks: any): boolean {
     return callbacks && subscribeEvents.some((event) => {
-        return _.isFunction(callbacks[event]);
+        return typeof callbacks[event] === 'function';
     });
 }
 
