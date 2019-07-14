@@ -16,7 +16,6 @@ import { Observable, Subscriber, Subject } from 'rxjs';
 import { bindNodeCallback } from 'rxjs/observable/bindNodeCallback';
 import { of } from 'rxjs/observable/of';
 
-import { FileData, FileObj, FilesCollection } from 'meteor/ostrio:files';
 import { FilesUpload, FileUploadCollection } from '../methods/filesupload';
 
 import { WorkflowsGitFetcher } from '../methods/git';

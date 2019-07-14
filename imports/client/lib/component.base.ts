@@ -38,7 +38,7 @@ export class BWComponentBase extends BWTracking {
 
 export class BWControlComponentBase extends BWComponentBase  {
     @Input()
-    public bwControl:BWInput = new BWInputText('dummy');
+    public bwControl = new BWInputText('dummy');
 
     @Input()
     public disabled:boolean = false;

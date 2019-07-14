@@ -12,7 +12,7 @@ import { combineLatest } from 'rxjs/observable/combineLatest';
 import { fromEventPattern } from 'rxjs/observable/fromEventPattern';
 import { of } from 'rxjs/observable/of';
 
-import { CWLCollection, Drafts, Labs, Projects, Samples, Requests } from '../../collections/shared';
+import { CWLCollection, Labs, Projects, Samples, Requests } from '../../collections/shared';
 
 import { Log } from './logger';
 import { ModuleCollection } from './remotes/postform';

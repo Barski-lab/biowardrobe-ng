@@ -1,8 +1,8 @@
 import { Mongo } from 'meteor/mongo';
 
-export const Drafts: any = new Mongo.Collection('drafts');
+export const Labs = new Mongo.Collection('laboratories');
 
-Drafts.deny({
+Labs.deny({
     insert: function () {
         return true;
     },

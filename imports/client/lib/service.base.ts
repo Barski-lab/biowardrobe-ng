@@ -18,7 +18,7 @@ export class BWServiceBase extends BWTracking {
         var status = Meteor.status();
         if(!status['connected']) {
             this._submitting = false;
-            swal({   title: 'Cannot connect to the server.', type: 'error', text: status.reason,  timer: 3000 });
+            // swal({   title: 'Cannot connect to the server.', type: 'error', text: status.reason,  timer: 3000 });
         }
         return this._submitting;
     }
@@ -55,7 +55,7 @@ export class BWServiceBase extends BWTracking {
         if ( !form ) return;
         if ( !v ) v=[];
 
-        _.keys(form.controls)
+        Object.keys(form.controls)
             .forEach( k => {
                 if (form.controls[k] instanceof FormControl)
                     form.controls[k].reset(v && v[k] || null, {onlySelf: false, emitEvent: false});

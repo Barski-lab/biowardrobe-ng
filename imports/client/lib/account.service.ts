@@ -57,6 +57,7 @@ export class BWAccountService extends BWServiceBase {
         super();
 
         Tracker.autorun(() => {
+            //@ts-ignore
             if (Roles.subscription.ready()){
                 this._rolesAvail$.next(true);
             }
