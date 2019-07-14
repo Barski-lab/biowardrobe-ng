@@ -3,16 +3,12 @@ import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { BrowserModule } from '@angular/platform-browser';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { HttpModule } from '@angular/http';
-
-// import { TooltipModule } from 'ngx-bootstrap';
+// import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 import { AppComponent } from './app/app.component';
 import { AppRouting } from './app.routing';
 
 import { AuthModule } from '../auth/auth.module';
-import { PlatformModule } from '../platform/platform.module'
 
 
 // Call forRoot to import module with all its services (include providers).
@@ -25,14 +21,11 @@ import { PlatformModule } from '../platform/platform.module'
         CommonModule,
         BrowserModule,
         FormsModule,
-        BrowserAnimationsModule,
+        // BrowserAnimationsModule,
         ReactiveFormsModule,
         RouterModule,
-        // TooltipModule,
         AppRouting,
-        HttpModule,
-        AuthModule.forRoot(),       // Note, we called forRoot() to import providers too
-        PlatformModule.forRoot()    // Note, we called forRoot() to import providers too
+        AuthModule.forRoot()       // Note, we called forRoot() to import providers too
     ],
     declarations: [AppComponent],
     bootstrap: [AppComponent]

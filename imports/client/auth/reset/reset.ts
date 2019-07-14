@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { BWAccountService, BWValidators, BWInputPassword, BWComponentBase } from '../../lib';
 
-import { TdDialogService } from '@covalent/core';
+// import { TdDialogService } from '@covalent/core';
 
 
 @Component({
@@ -20,7 +20,7 @@ export class BWReset extends BWComponentBase {
         protected _accounts: BWAccountService,
         protected _fb:FormBuilder,
         protected _zone: NgZone,
-        protected _dialogService: TdDialogService
+        // protected _dialogService: TdDialogService
     ) {
         super();
         this.resetForm = _fb.group({
@@ -41,7 +41,7 @@ export class BWReset extends BWComponentBase {
                         console.log(o);
                         if(o && o[0] && o[0].message) {
                             this._zone.run(() => {
-                                this._dialogService.openAlert({title: "Can't reset password", message: o[0].message});
+                                // this._dialogService.openAlert({title: "Can't reset password", message: o[0].message});
                             });
                             return;
                         }

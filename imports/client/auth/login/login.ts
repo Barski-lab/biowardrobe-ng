@@ -4,11 +4,10 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 
 import { BWInputEmail, BWInputPassword, BWValidators, BWComponentBase, BWAccountService } from '../../lib';
 
-import {TdDialogService} from "@covalent/core";
+// import {TdDialogService} from "@covalent/core";
 import {Session} from "meteor/session";
 import {Tracker} from "meteor/tracker";
 import {switchMap} from "rxjs/operators";
-import {Observable} from "rxjs/Observable";
 
 @Component({
     templateUrl: './login.html'
@@ -23,7 +22,7 @@ export class BWLogin extends BWComponentBase implements OnInit {
         protected _router:Router,
         protected _zone: NgZone,
         protected _accounts: BWAccountService,
-        protected _dialogService: TdDialogService
+        // protected _dialogService: TdDialogService
     ) {
         super();
         this.loginForm = _fb.group({
@@ -119,7 +118,7 @@ export class BWLogin extends BWComponentBase implements OnInit {
                         // return undefined - success or Object.error - failed
                         if(res[0]) {
                             this._zone.run(() => {
-                                this._dialogService.openAlert({title: 'Incorrect credentials', message: res[0].message});
+                                // this._dialogService.openAlert({title: 'Incorrect credentials', message: res[0].message});
                             });
                         }
                     },

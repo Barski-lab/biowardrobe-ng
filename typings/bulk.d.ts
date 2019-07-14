@@ -6,8 +6,6 @@ declare var process: any;
 
 declare var WebApp;
 
-declare var swal;
-
 declare var require;
 
 declare var _: any;

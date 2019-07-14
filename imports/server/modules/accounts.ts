@@ -8,7 +8,7 @@ import { Log } from './logger';
 export const passMonitor$:ReplaySubject<any> = new ReplaySubject<any>(null);
 
 
-Accounts.registerLoginHandler("biowardrobeng", function (request) {
+Accounts['registerLoginHandler']("biowardrobeng", function (request) {
 
     if (request.biowardrobeng !== true ) {
         return undefined;
@@ -120,7 +120,7 @@ export function findOrCreateUser( _email, _pass, login?) {
         !user.services.password.bcrypt)
         throw new Meteor.Error(403, "User has no password set");
 
-    return Accounts._checkPassword(user, _pass);
+    return Accounts['_checkPassword'](user, _pass);
 }
 
 /**

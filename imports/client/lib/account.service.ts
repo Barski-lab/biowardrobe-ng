@@ -8,14 +8,12 @@ import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot } from
 
 import { Observable } from 'rxjs';
 import { map, filter, combineLatest, tap } from 'rxjs/operators';
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 
 import { BWServiceBase } from './service.base';
-import { BehaviorSubject } from "rxjs/BehaviorSubject";
-import { Tracker } from "meteor/tracker";
+import { Tracker } from 'meteor/tracker';
 
 const loginRoute = ['/login'];
-
-import { FileUpload } from './files';
 
 
 const unique = (value: any, index: any, self: any) => {

@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 import { BWAccountService, BWInputEmail, BWComponentBase } from '../../lib';
 
 
-import {TdDialogService} from "@covalent/core";
+// import {TdDialogService} from "@covalent/core";
 
 
 @Component({
@@ -17,7 +17,7 @@ export class BWForgot extends BWComponentBase {
         protected _accounts: BWAccountService,
         protected _fb:FormBuilder,
         protected _zone: NgZone,
-        protected _dialogService: TdDialogService
+        // protected _dialogService: TdDialogService
     ) {
         super();
         this.forgotForm = _fb.group({
@@ -40,9 +40,9 @@ export class BWForgot extends BWComponentBase {
                         // [error, undefined] - failure
                         this._zone.run(() => {
                             if (!res[0]){
-                                this._dialogService.openAlert({title: 'Email was sent.', message: 'Please check your email box for future instructions.'});
+                                // this._dialogService.openAlert({title: 'Email was sent.', message: 'Please check your email box for future instructions.'});
                             } else {
-                                this._dialogService.openAlert({title: "Failed to reset password", message: res[0].reason});
+                                // this._dialogService.openAlert({title: "Failed to reset password", message: res[0].reason});
                             }
                         });
 
