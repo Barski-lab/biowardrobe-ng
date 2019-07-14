@@ -6,9 +6,8 @@ import { Roles } from 'meteor/alanning:roles';
 import { Injectable, NgZone } from '@angular/core';
 import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot } from '@angular/router';
 
-import { Observable } from 'rxjs';
-import { map, filter, combineLatest, tap } from 'rxjs/operators';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import {Observable, BehaviorSubject, bindCallback, combineLatest} from 'rxjs';
+import {map, filter, tap, mergeMap} from 'rxjs/operators';
 
 import { BWServiceBase } from './service.base';
 import { Tracker } from 'meteor/tracker';
@@ -36,10 +35,12 @@ export class BWAccountService extends BWServiceBase {
     public get account$(): Observable<BWAccountService> {
         return this._account$.pipe(
                 tap ( (a: any) => {console.log("Got account. Is logged in", a.isLoggedIn)} ),
-                combineLatest(this._rolesAvail$.asObservable().pipe(
-                    filter(_ => _),
-                    tap((r) => console.log("Are roles available", r)))),
-                map (_ => _[0]),
+                mergeMap( (a) =>
+                    this._rolesAvail$.pipe(
+                        filter(_ => _),
+                        tap((r) => console.log("Are roles available", r)),
+                        map(() => a))
+                ),
                 filter(_ => !!_)
             );
     }
@@ -71,17 +72,17 @@ export class BWAccountService extends BWServiceBase {
     }
 
     forgotPassword(email:string):Observable<any> {
-        let accountFn = Observable.bindCallback(Accounts.forgotPassword);
+        let accountFn = bindCallback(Accounts.forgotPassword);
         return accountFn({email: email});
     }
 
     resetPassword(token:string, newPassword:string):Observable<any> {
-        let accountFn = Observable.bindCallback(Accounts.resetPassword);
+        let accountFn = bindCallback(Accounts.resetPassword);
         return accountFn(token, newPassword);
     }
 
     login(email:string, password:string):Observable<any> {
-        let loginObservable = Observable.bindCallback(function (callback) {
+        let loginObservable = bindCallback(function (callback) {
             Accounts['callLoginMethod']({
                 methodArguments: [{email: email, pass: password, biowardrobeng: true}],
                 userCallback: callback

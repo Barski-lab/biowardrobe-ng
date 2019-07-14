@@ -25,7 +25,7 @@ Meteor.startup(() => {
             return next();
         });
     }
-    
+
     if(Meteor.settings['cors_package']) {
         WebApp.rawConnectHandlers.use(cors());
     }

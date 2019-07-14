@@ -2,12 +2,13 @@ import { Component, OnInit, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup } from '@angular/forms';
 
+import { Session } from 'meteor/session';
+import { Tracker } from 'meteor/tracker';
+import { switchMap } from 'rxjs/operators';
+
 import { BWInputEmail, BWInputPassword, BWValidators, BWComponentBase, BWAccountService } from '../../lib';
 
 // import {TdDialogService} from "@covalent/core";
-import {Session} from "meteor/session";
-import {Tracker} from "meteor/tracker";
-import {switchMap} from "rxjs/operators";
 
 @Component({
     templateUrl: './login.html'
@@ -15,6 +16,8 @@ import {switchMap} from "rxjs/operators";
 export class BWLogin extends BWComponentBase implements OnInit {
     public loginForm: FormGroup;
     private params: any;
+
+    errorMessage;
 
     constructor (
         protected _fb:FormBuilder,
@@ -47,7 +50,7 @@ export class BWLogin extends BWComponentBase implements OnInit {
                 return this._accounts.account$;
             })
         ).subscribe( (c) => {
-            // console.log(c, c.isLoggedIn);
+            console.log(c, c.isLoggedIn);
             if (c.isLoggedIn) {
                 if(this.params && this.params.client_id) {
                     let { client_id, redirect_uri, state } =  this.params;
@@ -115,10 +118,9 @@ export class BWLogin extends BWComponentBase implements OnInit {
                 .subscribe(
                     res => {
                         console.log (res);
-                        // return undefined - success or Object.error - failed
                         if(res[0]) {
                             this._zone.run(() => {
-                                // this._dialogService.openAlert({title: 'Incorrect credentials', message: res[0].message});
+                                this.errorMessage = `Incorrect credentials ${res[0].message}`
                             });
                         }
                     },

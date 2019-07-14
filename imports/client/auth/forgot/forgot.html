@@ -3,6 +3,14 @@
             title="Forgot Password?"
             subtitle="Enter your e-mail address below to reset your password"
             [alert]="isInvalid(forgotForm)">
+
+        <div *ngIf="errorMessage" class="alert alert-danger">
+            {{errorMessage}}
+        </div>
+        <div *ngIf="successMessage" class="alert alert-success">
+            {{successMessage}}
+        </div>
+
         <bw-textinput [disabled]="submitting" [focus]="true" [image]="'fa-envelope'" [bwControl]="forgotForm.controls.email"></bw-textinput>
         <div class="form-actions">
             <button type="submit" class="btn btn-blue pull-right" (click)="submit()"  >

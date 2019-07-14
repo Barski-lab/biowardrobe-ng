@@ -3,6 +3,10 @@
             title="Reset password"
             subtitle="Enter new password."
             [alert]="isInvalid(resetForm)">
+        <div *ngIf="errorMessage" class="alert alert-danger">
+            {{errorMessage}}
+        </div>
+
         <bw-textinput [disabled]="submitting" image='fa-lock' [focus]="true" [bwControl]="resetForm.controls.password"></bw-textinput>
         <bw-textinput [disabled]="submitting" image='fa-lock' [bwControl]="resetForm.controls.passwordr"></bw-textinput>
         <div class="form-actions">
