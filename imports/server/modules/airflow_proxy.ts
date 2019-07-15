@@ -174,7 +174,7 @@ export class AirflowProxy {
         let cwl: any = CWLCollection.findOne({_id: sample.cwlId});
         if (!cwl) {
             Log.error("No cwl", sample.cwlId);
-            return of({ error: true, message: `no cwl ${sample.cwlId}`, sample: sample });
+            return of({ error: true, message: `no cwl ${sample.cwlId}`, sample });
         }
 
         let dag_id = `${cwl._id}-${cwl.git.sha}`; // path.basename(cwl.git.path, ".cwl");
@@ -184,7 +184,7 @@ export class AirflowProxy {
 
         let queue = airflowQueueCollection.findOne({sample_id});
         if (queue) {
-            return of({ warning: true, message: `Not yet cleaned`, sample: sample });
+            return of({ warning: true, message: `Not yet cleaned`, sample });
         }
 
         let queue_id = airflowQueueCollection.insert({sample_id});
@@ -500,7 +500,9 @@ export class AirflowProxy {
                 error: message
             };
 
-            airflowQueueCollection.remove({sample_id: sample._id});
+            if(sample) {
+                airflowQueueCollection.remove({sample_id: sample._id});
+            }
 
         } else if (warning) {
             Log.error("Cleanup:", message);
