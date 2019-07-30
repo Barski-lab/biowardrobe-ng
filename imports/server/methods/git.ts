@@ -146,7 +146,7 @@ export class WorkflowsGitFetcher {
         let base = path.join(directory, prefix);
         let dagTemplate = `
 #!/usr/bin/env python3
-from cwl_airflow_parser import CWLDAG, CWLJobDispatcher, CWLJobGatherer
+from cwl_airflow import CWLDAG, CWLJobDispatcher, CWLJobGatherer
 dag = CWLDAG(cwl_workflow="${base+".cwl"}", dag_id="${prefix}")
 dag.create()
 dag.add(CWLJobDispatcher(dag=dag), to='top')
