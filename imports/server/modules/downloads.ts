@@ -171,6 +171,7 @@ class AriaDownload {
                         .pipe(
                             map( (downloadId: string) => {
                                 data["_id"] = _id;
+                                self._downloadQueue[downloadId] = data
                                 return {data, downloadId}
                             }))),
                     mergeMap ( ({data, downloadId}) => this._updateDownloadStatus(data.sampleId, {"title": "Download", "progress": 0})
@@ -180,10 +181,9 @@ class AriaDownload {
                                     Log.debug("Failed to submit downloading status", res.message);
                                 }
                                 return {data, downloadId}
-                            }))),
-                    tap( ({data, downloadId}) => Log.debug("Schedule new download with downloadId", downloadId) ))
+                            }))))
                 .subscribe(
-                    ({data, downloadId}) => self._downloadQueue[downloadId] = data,
+                    ({data, downloadId}) => Log.debug("Schedule new download with downloadId", downloadId),
                     (err: any) => Log.error("Error encountered while scheduling new download", err))
                 
             self._downloadComplete()
