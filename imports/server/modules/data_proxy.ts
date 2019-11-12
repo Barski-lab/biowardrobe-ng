@@ -49,7 +49,7 @@ class DataProxy {
     public static csvfileDataStream (path: string, options? ): Observable<any> {
         let file$ = fs.createReadStream(path, {encoding: 'utf8'}).pipe(csv(options));
 
-        return Observable.create((observer) => {
+        return new Observable((observer) => {
 
             file$.on('data', Meteor.bindEnvironment((chunk) => observer.next(chunk)));
             file$.on('end', Meteor.bindEnvironment(() => observer.complete()));

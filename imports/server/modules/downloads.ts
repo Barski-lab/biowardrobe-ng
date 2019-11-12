@@ -1,6 +1,6 @@
 import { Meteor } from 'meteor/meteor';
-import { Observable, Subject, fromEvent, of, from as observableFrom } from 'rxjs';
-import { tap, map, merge, mergeMap } from 'rxjs/operators';
+import {Observable, Subject, fromEvent, of, from as observableFrom, merge, interval, Subscriber} from 'rxjs';
+import { tap, map, mergeMap, catchError, filter, take } from 'rxjs/operators';
 
 import { Downloads, Samples } from '../../collections/shared';
 import { moduleLoader } from './remotes/moduleloader';
@@ -19,39 +19,184 @@ const fs = require('fs');
 const exec = require('child_process').exec;
 
 // For testing:
-// Listen only on localhost:6800, no encryion enabled, no secret token
-// aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800 --rpc-secret="your secret token"
+// Listen only on localhost:6800, no encryption enabled, no secret token
+// aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --auto-file-renaming=false --rpc-listen-port=6800 --rpc-secret="your secret token"
 
 class AriaDownload {
 
     private _aria: any;
-    private _downloadQueue = {};
+    // private _downloadQueue = {};
 
     private _nextToDownload$: Subject<any> = new Subject<any>();
-    private _waitForCopy$: Subject<any> = new Subject<any>();
+    private _copyComplete$: Subject<any> = new Subject<any>();
+
     private _events$: Subject<any> = new Subject<any>();
     public get events$() {
         return this._events$;
     }
 
-    private _openWebSocket(): Observable<any> {
-        return observableFrom(this._aria.open())
-    };
+    /**
+     *
+     */
+    constructor() {
+        let self = this;
 
+        if (Meteor.settings.download && Meteor.settings.download["aria2"]) {
+
+            this._aria = new aria2([Meteor.settings.download["aria2"]]);
+
+            // Downloads.find( {"downloaded": false, $or: [{"error": null}, {"error": ""}]} )
+            //     .observeChanges({
+            //         added  (_id, data) { self._nextToDownload$.next( {_id, data} ) },
+            //         changed(_id, data) { self._nextToDownload$.next( {_id, data} ) }
+            //     });
+
+            this._openWebSocket()
+                .pipe(
+                    tap( (w: any) => Log.debug("Open WebSocket to", w.target.url) ),
+                    mergeMap( (v) => this._nextToDownload$),
+                    tap( ({_id, data}) => Log.debug("Update Downloads collection", _id) ),
+                    mergeMap( ({_id, data}) =>
+                        this._addDownload(data.uri, data.path, data.header, _id)
+                            .pipe(
+                                map( (downloadId: string) => {
+                                    // data["_id"] = _id;
+                                    // self._downloadQueue[downloadId] = data;
+                                    Downloads.update( {"_id": _id}, {$set: {"downloadId": downloadId}} );
+                                    return {data, downloadId, _id}
+                                }),
+                                catchError((err) => Log.error("Failed to start download or copy status", err))
+                            )
+                    ),
+                    mergeMap ( ({data, downloadId, _id}) => {
+                            return this._updateDownloadStatus(data.sampleId, {"title": "Download", "progress": 0})
+                                .pipe(
+                                    map((res: any) => {
+                                        if (res.error && res.message) {
+                                            Log.debug("Failed to submit downloading status", res.message);
+                                        }
+                                        return {data, downloadId}
+                                    }),
+                                    catchError((err) => Log.error("Failed to submit downloading status", err))
+                                )
+                        }
+                    ),
+                    catchError((err) => Log.error("Error encountered while scheduling new download", err))
+                )
+                .subscribe(({data, downloadId}) => Log.debug("Schedule new download with downloadId", downloadId));
+
+            /**
+             * Any complete!
+             */
+            merge(this._downloadComplete(), this._downloadError(), this._copyComplete$).pipe(
+                catchError((err) => Log.error("Error encountered while processing results from scheduled download", err))
+            )
+                .subscribe(
+                    Meteor.bindEnvironment( ({downloadId, error}) => {
+                        return error ? self._onDownloadError(downloadId) : self._onDownloadComplete(downloadId);
+                    }));
+
+            /**
+             * Check aria2c download process
+             */
+            (new Observable(Meteor.bindEnvironment((observer: Subscriber<any>) => {
+                Meteor.setInterval(() => {
+                    observer.next();
+                }, 3000);
+            }))).pipe(
+                mergeMap( () => {
+                    const d:any = Downloads
+                        .find({"downloaded": false, "downloadId":  {$exists: true} })
+                        .fetch() || [null];
+                    return of(...d);
+                }),
+                filter(_ => !!_),
+                mergeMap((doc: any) => {
+                    Log.debug("downloading", doc._id, doc.downloadId);
+                    return observableFrom(this._aria.call("aria2.tellStatus", doc.downloadId)).pipe(
+                        map((_status:any) => {
+                            let {bitfield, ...status} = _status;
+                            return {...status,  downloadId: doc.downloadId, sampleId: doc.sampleId, _id: doc._id };
+                        }),
+                        catchError((err) => Log.error("Aria2 process checker error:", err))
+                    );
+                }),
+                mergeMap((status: any)  => {
+
+                    Log.debug("aria2 downloading status:", status);
+
+                    if(status.status=="complete") {
+                        this._copyComplete$.next({"downloadId": status._id});
+                        return of('finished');
+                    }
+
+                    if( status.completedLength && status.totalLength && status.totalLength != 0 ) {
+
+                        return this._updateDownloadStatus(status.sampleId,
+                            {"title": "Download", "progress": (status.completedLength*100.0/status.totalLength).toFixed(2)})
+                            .pipe(
+                                map((res: any) => {
+                                    if (res.error && res.message) {
+                                        Log.debug("Failed to submit downloading status", res.message);
+                                    }
+                                    return {...status}
+                                }),
+                                catchError((err) => Log.error("Failed to submit downloading status", err))
+                            )
+                    }
+                    return of('processing');
+                }),
+                catchError((err) => Log.error("Aria2 process checker error:", err))
+            )
+                .subscribe( (status: any) => {
+                    Log.debug(status);
+                });
+        }
+    }
+
+    /**
+     *
+     * @private
+     */
+    private _openWebSocket(): Observable<any> {
+        return observableFrom(this._aria.open());
+    }
+
+    /**
+     *
+     * @private
+     */
     private _downloadComplete(): Observable<any> {
         return fromEvent(this._aria, "onDownloadComplete").pipe(
             map( (r: any) => {
-                return {"downloadId": r[0].gid}
-            }))
-    };
+                const doc = Downloads.findOne({"downloadId": r[0].gid});
+                return {"downloadId": doc._id}
+            }),
+            catchError((err) => Log.error("Error encountered onDownloadComplete", err))
+        )
+    }
 
+    /**
+     *
+     * @private
+     */
     private _downloadError(): Observable<any> {
         return fromEvent(this._aria, "onDownloadError").pipe(
             map( (r: any) => {
-                return {"downloadId": r[0].gid, "error": "Download failed"}
-            }))
-    };
+                const doc = Downloads.findOne({"downloadId": r[0].gid});
+                return {"downloadId": doc._id}
+            }),
+            catchError((err) => Log.error("Error encountered onDownloadError", err))
+        )
+    }
 
+    /**
+     *
+     * @param downloadUri
+     * @param destinationPath
+     * @param downloadId
+     * @private
+     */
     private _copyLocalFile(downloadUri: any, destinationPath: any, downloadId: any) {
         Log.debug("copy file from", downloadUri, "to", destinationPath);
         try {
@@ -62,21 +207,28 @@ class AriaDownload {
         fs.copyFile(downloadUri, destinationPath, fs.constants.COPYFILE_EXCL, (err: any) => {
             if (err) {
                 Log.error('Failed to copy file', err);
-                this._waitForCopy$.next({"downloadId": downloadId, "error": err});
+                this._copyComplete$.next({"downloadId": downloadId, "error": err});
             } else {
-                this._waitForCopy$.next({"downloadId": downloadId});
+                this._copyComplete$.next({"downloadId": downloadId});
             }
         });
     };
 
+    /**
+     *
+     * @param downloadUri
+     * @param destinationPath
+     * @param downloadId
+     * @private
+     */
     private _downloadFromGeo(downloadUri: any, destinationPath: any, downloadId: any) {
         let dir = path.dirname(destinationPath);
-        
+
         if (destinationPath.indexOf("_2.fastq.bz2") > -1){
             Log.debug("Skip download. Already downloading from GEO", downloadUri, "to", dir);
             return;
         }
-        
+
         Log.debug("Download file(s) from GEO", downloadUri, "to", dir);
 
         try {
@@ -109,37 +261,58 @@ class AriaDownload {
 
         exec(fastq_dump, (err: any, stdout: any, stderr: any) => {
             // Log.debug('Check download queue for paired end input data', this._downloadQueue);
-            let paired_downloadId = Object.keys(this._downloadQueue).find(key => {
-                let paired_uri = this._downloadQueue[key].uri;
-                let paired_file = this._downloadQueue[key].path;
-                let paired_dir = path.dirname(paired_file);
-                return paired_uri === downloadUri && paired_dir === dir && paired_file.indexOf("_2.fastq.bz2") > -1
-            })
+            let doc = Downloads.findOne({_id: downloadId});
+            if (!doc) {
+                Log.error(`Can't find ${downloadId} in downloads`);
+                return;
+            }
+            // let paired_uri = doc.uri;
+            // let paired_file = doc.path;
+            // let paired_dir = path.dirname(paired_file);
+            // paired_uri === downloadUri && paired_dir === dir && paired_file.indexOf("_2.fastq.bz2") > -1
+
+            let paired_downloadId = Downloads.find({uri: doc.uri, path: doc.path, sampleId: doc.sampleId})
+                .fetch()
+                .find(key => key._id != downloadId);
+
+            // let paired_downloadId = Object.keys(this._downloadQueue).find(key => {
+            //     let paired_uri = this._downloadQueue[key].uri;
+            //     let paired_file = this._downloadQueue[key].path;
+            //     let paired_dir = path.dirname(paired_file);
+            //     return paired_uri === downloadUri && paired_dir === dir && paired_file.indexOf("_2.fastq.bz2") > -1
+            // });
+
             if (err || stderr.indexOf("item not found") > -1) {
                 Log.error('Failed to download file from GEO', stderr);
-                this._waitForCopy$.next({"downloadId": downloadId, "error": stderr});
+                this._copyComplete$.next({"downloadId": downloadId, "error": stderr});
                 if (paired_downloadId){
-                    this._waitForCopy$.next({"downloadId": paired_downloadId, "error": stderr});
+                    this._copyComplete$.next({"downloadId": paired_downloadId, "error": stderr});
                 }
             } else {
-                this._waitForCopy$.next({"downloadId": downloadId});
+                this._copyComplete$.next({"downloadId": downloadId});
                 if (paired_downloadId){
-                    this._waitForCopy$.next({"downloadId": paired_downloadId});
+                    this._copyComplete$.next({"downloadId": paired_downloadId});
                 }
             }
         });
-    };
+    }
 
-    private _addDownload(downloadUri: any, destinationPath: any, header: any): Observable<any> {
+    /**
+     *
+     * @param downloadUri
+     * @param destinationPath
+     * @param header
+     * @param id
+     * @private
+     */
+    private _addDownload(downloadUri: any, destinationPath: any, header: any, id?: any): Observable<any> {
         if (header == "geo"){
-            let downloadId = Random.id();
-            this._downloadFromGeo(downloadUri, destinationPath, downloadId);
-            return of(downloadId);
+            this._downloadFromGeo(downloadUri, destinationPath, id);
+            return of(id);
         }
         else if (header == "copy"){
-            let downloadId = Random.id();
-            this._copyLocalFile(downloadUri, destinationPath, downloadId);
-            return of(downloadId);
+            this._copyLocalFile(downloadUri, destinationPath, id);
+            return of(id);
         } else {
             return observableFrom(this._aria.call("addUri", [downloadUri], {"dir": path.dirname(destinationPath), "out": path.basename(destinationPath), "header": header}))
         }
@@ -149,64 +322,18 @@ class AriaDownload {
         return AirflowProxy.master_progress_update(sampleId, {progress} as any)
     }
 
-    constructor() {
-        let self = this;
-
-        if (Meteor.settings.download && Meteor.settings.download["aria2"]) {
-
-            self._aria = new aria2([Meteor.settings.download["aria2"]]);
-
-            Downloads.find( {"downloaded": false, $or: [{"error": null}, {"error": ""}]} )
-                .observeChanges({
-                    added  (_id, data) { self._nextToDownload$.next( {_id, data} ) },
-                    changed(_id, data) { self._nextToDownload$.next( {_id, data} ) }
-                });
-
-            self._openWebSocket()
-                .pipe(
-                    tap( (w: any) => Log.debug("Open WebSocket to", w.target.url) ),
-                    mergeMap( () => self._nextToDownload$.asObservable() ),
-                    tap( ({_id, data}) => Log.debug("Update Downloads collection", _id) ),
-                    mergeMap( ({_id, data}) => self._addDownload(data.uri, data.path, data.header)
-                        .pipe(
-                            map( (downloadId: string) => {
-                                data["_id"] = _id;
-                                self._downloadQueue[downloadId] = data
-                                return {data, downloadId}
-                            }))),
-                    mergeMap ( ({data, downloadId}) => this._updateDownloadStatus(data.sampleId, {"title": "Download", "progress": 0})
-                        .pipe(
-                            map( (res: any) => {
-                                if (res.error && res.message){
-                                    Log.debug("Failed to submit downloading status", res.message);
-                                }
-                                return {data, downloadId}
-                            }))))
-                .subscribe(
-                    ({data, downloadId}) => Log.debug("Schedule new download with downloadId", downloadId),
-                    (err: any) => Log.error("Error encountered while scheduling new download", err))
-                
-            self._downloadComplete()
-                .pipe(
-                    merge(self._downloadError()),
-                    merge(self._waitForCopy$.asObservable()))
-                .subscribe(
-                    Meteor.bindEnvironment( ({downloadId, error}) => error ? self._onDownloadError(downloadId) : self._onDownloadComplete(downloadId) ),
-                    (err) => Log.error("Error encountered while processing results from scheduled download", err))
-
-        }
-
-    };
-
     public checkInputs(sampleId: string): boolean {
         Log.debug("Check inputs for sample", sampleId);
         let needDownload = false;
         let sample: any = Samples.findOne( {"_id": sampleId} );
-        
+
         if (sample && sample["inputs"]) {
             const inputs = sample["inputs"];
             for (const key in inputs) {
-                if (inputs[key] && inputs[key].location && !(inputs[key].location.startsWith("file://") || inputs[key].location.startsWith("/"))) {
+                if (inputs.hasOwnProperty(key) && inputs[key].location &&
+                    !(inputs[key].location.startsWith("file://") || inputs[key].location.startsWith("/"))
+                ) {
+
                     Log.debug("Process input", key, inputs[key].location);
                     const fileUrl = url.parse(inputs[key].location);
                     const module = moduleLoader.getModule(fileUrl);
@@ -221,7 +348,8 @@ class AriaDownload {
                     let telegram: any;
                     let publicKey = connection.server_public_key;
                     let verifyOptions = {
-                        algorithm: ["ES512"]
+                        algorithm: ["ES512"],
+                        ignoreExpiration: true
                     };
                     try {
                         telegram = jwt.verify(inputs[key].token.replace("token://", ""), publicKey, verifyOptions);
@@ -229,9 +357,17 @@ class AriaDownload {
                         Log.error("Failed to verify token", err);
                         return false;
                     }
-                    
+
+                    Downloads.remove({"downloaded": false, "error": {$exists: true}});
+
+                    // Downloads.find( {"downloaded": false, $or: [{"error": null}, {"error": ""}]} )
+                    //     .observeChanges({
+                    //         added  (_id, data) { self._nextToDownload$.next( {_id, data} ) },
+                    //         changed(_id, data) { self._nextToDownload$.next( {_id, data} ) }
+                    //     });
+
                     if (telegram && !Downloads.findOne( {"sampleId": sampleId, "inputKey": key} )){
-                        Downloads.insert({
+                        const data = {
                             "uri": fileData.url,
                             "path": AirflowProxy.output_folder(sample.projectId, sample._id)+`/${fileData.basename}`,
                             "header": fileData.header,
@@ -242,7 +378,11 @@ class AriaDownload {
                             "inputKey": key,
                             "token": inputs[key].token.replace("token://", ""),
                             "downloaded": false
-                        });
+                        };
+                        const _id = Downloads.insert(data);
+                        data[_id] = _id;
+
+                        this._nextToDownload$.next( {_id, data} );
                     }
                     needDownload = true;
                 }
@@ -251,54 +391,92 @@ class AriaDownload {
         return !needDownload;
     }
 
+    /**
+     *
+     * @param downloadId
+     * @private
+     */
     private _onDownloadComplete (downloadId: string) {
-        let doc = this._downloadQueue[downloadId];
-        if (doc) {
+        const doc = Downloads.findOne({_id: downloadId});
+        if (!doc) {
+            Log.debug(`Can't find downloadId: ${downloadId}`);
+            return;
+        }
+        if (doc.downloaded != true) {
             Log.debug("Success download", downloadId);
-            Downloads.update( {"_id": doc._id}, {$set: {"downloaded": true}} );
-            delete this._downloadQueue[downloadId];
-            DDPConnection.call('satellite/file/uploaded', {token: doc.token, location: `file://${doc.path}`})
-                .subscribe(() => {
-                    let opts = {
-                        meta: {
-                            projectId: doc.projectId,
-                            sampleId: doc.sampleId,
-                            userId: doc.userId,
-                            synced: Date.now()/1000.0,
-                            isOutput: false
-                        },
-                        fileName: path.basename(doc.path),
-                        userId: doc.userId,
-                        fileId: doc.fileId,
-                        type: mime.getType(doc.path)
-                    }
-                    FilesUpload.addFile(doc.path, opts, (err) => {
-                        if (err){
-                            Log.error("Failed to add file to FilesUpload collection", err)
-                        } else {
-                            Samples.update({ "_id": doc.sampleId }, {
-                                $set: {
-                                    [`inputs.${doc.inputKey}`]: { "_id": doc.fileId, "location": "file://" + doc.path, "class": "File" }
-                                }
-                            });
-                            if (this.checkInputs(doc.sampleId)){
-                                this._events$.next( {"sampleId": doc.sampleId} );
+            Downloads.update({"_id": doc._id}, {$set: {"downloaded": true}});
+            const opts = {
+                meta: {
+                    projectId: doc.projectId,
+                    sampleId: doc.sampleId,
+                    userId: doc.userId,
+                    // synced: Date.now()/1000.0,
+                    isOutput: false
+                },
+                fileName: path.basename(doc.path),
+                userId: doc.userId,
+                fileId: doc.fileId,
+                type: mime.getType(doc.path)
+            };
+
+            FilesUpload.addFile(doc.path, opts, (err) => {
+                if (err) {
+                    Log.error("Failed to add file to FilesUpload collection", err);
+                    Downloads.update({"_id": doc._id}, {$set: {"error": err}});
+                } else {
+                    Downloads.update({"_id": doc._id}, {$set: {"fileCollectionAdded": true}});
+
+                    Samples.update({"_id": doc.sampleId}, {
+                        $set: {
+                            [`inputs.${doc.inputKey}`]: {
+                                "_id": doc.fileId,
+                                "location": "file://" + doc.path,
+                                "class": "File"
                             }
                         }
                     });
+                    /**
+                     * If last file downloaded for sample, notify subscribers that sample is ready to by analyzed
+                     */
+                    if (this.checkInputs(doc.sampleId)) {
+                        this._events$.next({"sampleId": doc.sampleId});
+                    }
+                }
+            });
+        } else {
+            Log.debug(`Previously processed no attention needed: ${downloadId}`);
+        }
+
+        if (doc.masterSynced != true) {
+            DDPConnection.call('satellite/file/uploaded', {token: doc.token, location: `file://${doc.path}`})
+                .pipe(
+                    take(1)
+                )
+                .subscribe(() => {
+                    Downloads.update({"_id": doc._id}, {$set: {"masterSynced": true}});
+                    FilesUpload.collection.update({_id: doc.fileId}, {$set: {"meta.synced": Date.now() / 1000.0}});
                 });
         }
     }
-    
+
+    /**
+     *
+     * @param downloadId
+     * @private
+     */
     private _onDownloadError (downloadId: string) {
-        let doc = this._downloadQueue[downloadId];
+        let doc = Downloads.findOne({_id: downloadId});
         if (doc) {
             Log.error("Failed download", downloadId);
-            let errorMsg = "Failed to download " + doc.uri + ", downloadId: " + downloadId;
+            let errorMsg = "Failed to download " + doc.uri;
             Downloads.update({"_id": doc._id}, {$set: {"error": errorMsg}});
-            delete this._downloadQueue[downloadId];
+            // delete this._downloadQueue[downloadId];
+            //Output, notify outside of the class
             this._events$.next( {"sampleId": doc.sampleId, "error": errorMsg} );
             this._updateDownloadStatus(doc.sampleId, {"title": "Error", "progress": 0, "error": errorMsg})
+                .pipe(
+                    take(1)
+                )
                 .subscribe( (res: any) => {
                     if (res.error && res.message){
                         Log.debug("Failed to submit downloading status", res.message);
@@ -310,3 +488,12 @@ class AriaDownload {
 }
 
 export const ariaDownload = new AriaDownload();
+
+
+Meteor.startup(() => {
+    /**
+     * Server startup
+     */
+    Downloads.remove({"downloaded": false, "error": {$exists: true}});
+    Downloads.remove({"downloaded": false, "downloadId": {$exists: false}});
+});

@@ -29,7 +29,7 @@ import * as bodyParser from 'body-parser';
 import * as zlib from 'zlib';
 
 let pdelay = (data, delay) => {
-    return Observable.create(Meteor.bindEnvironment((observer: Subscriber<any>) => {
+    return new Observable(Meteor.bindEnvironment((observer: Subscriber<any>) => {
         Meteor.setTimeout(() => {
             observer.next(data);
             observer.complete();
@@ -50,13 +50,12 @@ export class AirflowProxy {
         AirflowProxy.listen$
             .pipe(
                 filter(({dag_id, run_id, results}) => dag_id === 'clean_dag_run'),
-                concatMap((d: any) => pdelay(d, 2000)),
-                switchMap(({dag_id, run_id, results}) => {
+                mergeMap(({dag_id, run_id, results}) => {
                     Log.debug(`Successfully cleaned! ${run_id}`);
                     //FIXME: probably memory leak, replace with stream of dags to clean
                     return AirflowProxy.trigger_dag(run_id)
                         .pipe(
-                            switchMap(({result, error, message, sample}) => {
+                            mergeMap(({result, error, message, sample}) => {
                                 let progress: any = null;
                                 if (error) {
                                     Log.error("AirflowProxy.trigger_dag:", message);
@@ -166,10 +165,10 @@ export class AirflowProxy {
             return of({ error: true, message: `no sample id ${sample_id}`});
         }
 
-        if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
-            Log.debug("Project is not for analysis yet", sample_id);
-            return of({ error: true, message: `Project is not for analysis yet ${sample_id}`});
-        }
+        // if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
+        //     Log.debug("Project is not for analysis yet", sample_id);
+        //     return of({ error: true, message: `Project is not for analysis yet ${sample_id}`});
+        // }
 
         let cwl: any = CWLCollection.findOne({_id: sample.cwlId});
         if (!cwl) {
@@ -223,10 +222,10 @@ export class AirflowProxy {
             return of({ error: true, message: `no sample id ${sample_id}`});
         }
 
-        if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
-            Log.debug("Project is not for analysis yet", sample_id);
-            return of({ error: true, message: `Project is not for analysis yet ${sample_id}`});
-        }
+        // if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
+        //     Log.debug("Project is not for analysis yet", sample_id);
+        //     return of({ error: true, message: `Project is not for analysis yet ${sample_id}`});
+        // }
 
         FilesUpload.remove({"meta.isOutput": true, "meta.sampleId": sample._id}, (err) => err?Log.error(err): "" );
 
@@ -310,10 +309,10 @@ export class AirflowProxy {
         /**
          * If report from project with general pipelines either ignore or store outputs locally?
          */
-        if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
-            Log.debug("Project is not for analysis yet, store results?");
-            return next();
-        }
+        // if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
+        //     Log.debug("Project is not for analysis yet, store results?");
+        //     return next();
+        // }
 
 
         /**
@@ -352,10 +351,10 @@ export class AirflowProxy {
         /**
          * If report from project with general pipelines either ignore or store outputs locally?
          */
-        if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
-            Log.debug("Project is not for analysis yet, store results?");
-            return next();
-        }
+        // if (sample.projectId == 'Mrx3c92PKkipTBMsA') {
+        //     Log.debug("Project is not for analysis yet, store results?");
+        //     return next();
+        // }
 
         /**
          * Update progress report to the master
@@ -418,14 +417,14 @@ export class AirflowProxy {
             
             FilesUpload.addFile(location, opts, (err) => err?Log.error(err): "" );
             return opts.fileId;
-        }
+        };
 
         let processDirectory = (sample:any, output_data: any) => {
             if (output_data.class === "File") {
                 output_data['_id'] = addOutputFile(sample, output_data.location, output_data.basename);
             } else {
                 for ( const i in output_data.listing ) {
-                    processDirectory(sample, output_data.listing[i])
+                    processDirectory(sample, output_data.listing[i]);
                 }
             }
         };
@@ -438,7 +437,7 @@ export class AirflowProxy {
                     return sf;
                 })
             }
-        }
+        };
 
         let processFileArray = (sample:any, output_data: any) => {
             for ( const i in output_data ) {
@@ -457,7 +456,7 @@ export class AirflowProxy {
             } else if (Array.isArray(output_data) && output_data.every(k => k.class === "File")) {   // process File[]
                 processFileArray(sample, output_data);
             }
-            outputs[output_key] = output_data
+            outputs[output_key] = output_data;
         }
         return outputs;
     }
@@ -544,8 +543,7 @@ Meteor.startup(() => {
             // @ts-ignore
             filter(({name, event, id}) => name == 'samples' && ['added', 'changed'].includes(event)),
             filter(({name, event, id}) => ariaDownload.checkInputs(id)),
-            concatMap((d: any) => pdelay(d, 2000)),
-            switchMap(({name, event, id}) => { // collection name, event {added, changed, removed}, id - sample id
+            mergeMap(({name, event, id}) => { // collection name, event {added, changed, removed}, id - sample id
                 return airflowProxy.cleanup_dag(id);
             }),
             mergeMap( ({result, error, warning, message, sample}) => {
@@ -558,9 +556,9 @@ Meteor.startup(() => {
 
     ariaDownload.events$
         .pipe(
-            tap(d => Log.debug("aria2 download Event:", d)),
+            tap(d => Log.debug("Download Event:", d)),
             filter(({sampleId, error}) => !error),
-            switchMap(({sampleId, error}) => {
+            mergeMap(({sampleId, error}) => {
                 return airflowProxy.cleanup_dag(sampleId);
             }),
             mergeMap( ({result, error, message, sample, warning}) => {
