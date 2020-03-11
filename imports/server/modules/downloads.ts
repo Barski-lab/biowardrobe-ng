@@ -62,7 +62,6 @@ class AriaDownload {
                                 map( (downloadId: string) => {
                                     // data["_id"] = _id;
                                     // self._downloadQueue[downloadId] = data;
-                                    Downloads.update( {"_id": _id}, {$set: {"downloadId": downloadId}} );
                                     return {data, downloadId, _id}
                                 }),
                                 catchError((err) => Log.error("Failed to start download or copy status", err))
@@ -106,7 +105,7 @@ class AriaDownload {
             }))).pipe(
                 mergeMap( () => {
                     const d:any = Downloads
-                        .find({"downloaded": false, "downloadId":  {$exists: true} })
+                        .find({"downloaded": false, "downloadId":  {$exists: true}, "header": "" })
                         .fetch() || [null];
                     return of(...d);
                 }),
@@ -240,32 +239,33 @@ class AriaDownload {
         let base = path.basename(destinationPath, ".fastq.bz2");
         let fastq_dump =`
             cd ${dir}
-            for U in $(echo ${downloadUri}) 
+            for U in $(echo ${downloadUri})
             do
                 fastq-dump --split-3 -B $\{U\}
-            
+
                 if [ -f $\{U\}_1.fastq ]; then
                 mv -f "$\{U\}_1.fastq" "$\{U\}".fastq
                 fi
-            
+
                 cat "$\{U\}.fastq" >> "${base}".fastq
-                
+
                 if [ -f "$\{U\}_2.fastq" ]; then
                 cat "$\{U\}_2.fastq" >> "${base}"_2.fastq
                 fi
-                
+
                 rm -f "$\{U\}.fastq"
                 rm -f "$\{U\}_2.fastq"
             done
             bzip2 "${base}"*.fastq`;
 
-        exec(fastq_dump, (err: any, stdout: any, stderr: any) => {
+        exec(fastq_dump, Meteor.bindEnvironment((err: any, stdout: any, stderr: any) => {
             // Log.debug('Check download queue for paired end input data', this._downloadQueue);
             let doc = Downloads.findOne({_id: downloadId});
             if (!doc) {
                 Log.error(`Can't find ${downloadId} in downloads`);
                 return;
             }
+
             // let paired_uri = doc.uri;
             // let paired_file = doc.path;
             // let paired_dir = path.dirname(paired_file);
@@ -289,12 +289,13 @@ class AriaDownload {
                     this._copyComplete$.next({"downloadId": paired_downloadId, "error": stderr});
                 }
             } else {
+
                 this._copyComplete$.next({"downloadId": downloadId});
                 if (paired_downloadId){
                     this._copyComplete$.next({"downloadId": paired_downloadId});
                 }
             }
-        });
+        }));
     }
 
     /**
@@ -314,7 +315,17 @@ class AriaDownload {
             this._copyLocalFile(downloadUri, destinationPath, id);
             return of(id);
         } else {
-            return observableFrom(this._aria.call("addUri", [downloadUri], {"dir": path.dirname(destinationPath), "out": path.basename(destinationPath), "header": header}))
+            return observableFrom(this._aria.call("addUri", [downloadUri],
+                {
+                    "dir": path.dirname(destinationPath),
+                    "out": path.basename(destinationPath),
+                    "header": header
+                })).pipe(
+                    map((v:any) => {
+                        Downloads.update( {"_id": id}, {$set: {"downloadId": v}} );
+                        return v;
+                    })
+            )
         }
     }
 
@@ -393,17 +404,17 @@ class AriaDownload {
 
     /**
      *
-     * @param downloadId
+     * @param docId
      * @private
      */
-    private _onDownloadComplete (downloadId: string) {
-        const doc = Downloads.findOne({_id: downloadId});
+    private _onDownloadComplete (docId: string) {
+        const doc = Downloads.findOne({_id: docId});
         if (!doc) {
-            Log.debug(`Can't find downloadId: ${downloadId}`);
+            Log.debug(`Can't find downloadId: ${docId}`);
             return;
         }
         if (doc.downloaded != true) {
-            Log.debug("Success download", downloadId);
+            Log.debug("Success download", docId);
             Downloads.update({"_id": doc._id}, {$set: {"downloaded": true}});
             const opts = {
                 meta: {
@@ -444,7 +455,7 @@ class AriaDownload {
                 }
             });
         } else {
-            Log.debug(`Previously processed no attention needed: ${downloadId}`);
+            Log.debug(`Previously processed no attention needed: ${docId}`);
         }
 
         if (doc.masterSynced != true) {
@@ -461,13 +472,13 @@ class AriaDownload {
 
     /**
      *
-     * @param downloadId
+     * @param docId
      * @private
      */
-    private _onDownloadError (downloadId: string) {
-        let doc = Downloads.findOne({_id: downloadId});
+    private _onDownloadError (docId: string) {
+        let doc = Downloads.findOne({_id: docId});
         if (doc) {
-            Log.error("Failed download", downloadId);
+            Log.error("Failed download: ", docId);
             let errorMsg = "Failed to download " + doc.uri;
             Downloads.update({"_id": doc._id}, {$set: {"error": errorMsg}});
             // delete this._downloadQueue[downloadId];
