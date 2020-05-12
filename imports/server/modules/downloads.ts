@@ -253,6 +253,12 @@ class AriaDownload {
             do
                 fastq-dump --split-3 -B $\{U\}
 
+                if [ $? -ne 0 ]; then
+                  echo "Fastq-dump failure. Clean downloaded"
+                  rm -f "$\{U\}"*.fastq "${base}"*.fastq
+                  exit 1
+                fi
+
                 if [ -f $\{U\}_1.fastq ]; then
                 mv -f "$\{U\}_1.fastq" "$\{U\}".fastq
                 fi
