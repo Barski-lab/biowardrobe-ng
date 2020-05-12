@@ -254,7 +254,7 @@ class AriaDownload {
                 fastq-dump --split-3 -B $\{U\}
 
                 if [ $? -ne 0 ]; then
-                  echo "Fastq-dump failure. Clean downloaded"
+                  echo "Fastq-dump failure. Clean downloaded" >&2
                   rm -f "$\{U\}"*.fastq "${base}"*.fastq
                   exit 1
                 fi
