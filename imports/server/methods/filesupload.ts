@@ -299,7 +299,7 @@ Meteor.startup(() => {
 
 
 Meteor.methods({
-    'file/remove' (token: any) {
+    'file/remove': function(token: any) {
 
         check(token, String);
 
