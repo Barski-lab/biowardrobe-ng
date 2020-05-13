@@ -287,7 +287,7 @@ class AriaDownload {
             // let paired_dir = path.dirname(paired_file);
             // paired_uri === downloadUri && paired_dir === dir && paired_file.indexOf("_2.fastq.bz2") > -1
 
-            let paired_downloadId = Downloads.find({ uri: doc.uri, path: doc.path, sampleId: doc.sampleId, "error": { $exists: false } })
+            let paired_downloadId = Downloads.find({ uri: doc.uri, sampleId: doc.sampleId, "error": { $exists: false } })
                 .fetch()
                 .find(key => key._id != downloadId);
 
