@@ -287,7 +287,7 @@ class AriaDownload {
             // let paired_dir = path.dirname(paired_file);
             // paired_uri === downloadUri && paired_dir === dir && paired_file.indexOf("_2.fastq.bz2") > -1
 
-            let paired_downloadId = Downloads.find({ uri: doc.uri, sampleId: doc.sampleId, "error": { $exists: false } })
+            let paired_download = Downloads.find({ uri: doc.uri, sampleId: doc.sampleId, "error": { $exists: false } })
                 .fetch()
                 .find(key => key._id != downloadId);
 
@@ -301,14 +301,14 @@ class AriaDownload {
             if (err || stderr.indexOf("item not found") > -1) {
                 Log.error('Failed to download file from GEO', stderr);
                 this._copyComplete$.next({ "downloadId": downloadId, "error": stderr });
-                if (paired_downloadId) {
-                    this._copyComplete$.next({ "downloadId": paired_downloadId, "error": stderr });
+                if (paired_download) {
+                    this._copyComplete$.next({ "downloadId": paired_download._id, "error": stderr });
                 }
             } else {
 
                 this._copyComplete$.next({ "downloadId": downloadId });
-                if (paired_downloadId) {
-                    this._copyComplete$.next({ "downloadId": paired_downloadId });
+                if (paired_download) {
+                    this._copyComplete$.next({ "downloadId": paired_download._id });
                 }
             }
         }));
