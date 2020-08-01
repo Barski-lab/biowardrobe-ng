@@ -249,29 +249,35 @@ class AriaDownload {
         let base = path.basename(destinationPath, ".fastq.bz2");
         let fastq_dump = `
             cd ${dir}
+            mkdir ./download
+            cd  ./download
             for U in $(echo ${downloadUri})
             do
                 fastq-dump --split-3 -B $\{U\}
 
                 if [ $? -ne 0 ]; then
                   echo "Fastq-dump failure. Clean downloaded" >&2
+                  cd ..
+                  rm -rf ./download
                   rm -f "$\{U\}"*.fastq "${base}"*.fastq
                   exit 1
                 fi
 
                 if [ -f $\{U\}_1.fastq ]; then
-                mv -f "$\{U\}_1.fastq" "$\{U\}".fastq
+                  mv -f "$\{U\}_1.fastq" "$\{U\}".fastq
                 fi
 
-                cat "$\{U\}.fastq" >> "${base}".fastq
+                cat "$\{U\}.fastq" >> ../"${base}".fastq
 
                 if [ -f "$\{U\}_2.fastq" ]; then
-                cat "$\{U\}_2.fastq" >> "${base}"_2.fastq
+                  cat "$\{U\}_2.fastq" >> ../"${base}"_2.fastq
                 fi
 
                 rm -f "$\{U\}.fastq"
                 rm -f "$\{U\}_2.fastq"
             done
+            cd ../
+            rm -rf ./download
             bzip2 "${base}"*.fastq`;
 
         exec(fastq_dump, Meteor.bindEnvironment((err: any, stdout: any, stderr: any) => {
