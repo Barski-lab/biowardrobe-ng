@@ -43,7 +43,7 @@ class GeoModule implements BaseModuleInterface {
     public getFile(fileUrl: any, userId?: any, sampleId?: any) {
         let url = fileUrl.href.replace("geo://", "").replace("/", "").replace(/,/g, " ").toUpperCase();
         let suffix = "";
-        if (Downloads.findOne( {"sampleId": sampleId, "uri": url, "userId": userId})){
+        if (Downloads.findOne( {"sampleId": sampleId, "uri": url, "userId": userId, "error": { $exists: false }})){
             suffix = "_2";
         }
         return { "url":      url,
