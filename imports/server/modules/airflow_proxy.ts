@@ -238,7 +238,7 @@ export class AirflowProxy {
         const data = {
             run_id: sample_id,
             conf: JSON.stringify({
-                job: {...sample.inputs, output_folder: AirflowProxy.output_folder(sample.projectId, sample_id)}
+                job: {...sample.inputs, outputs_folder: AirflowProxy.output_folder(sample.projectId, sample_id)}
             })
         };
 

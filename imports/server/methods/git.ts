@@ -146,11 +146,11 @@ export class WorkflowsGitFetcher {
         let base = path.join(directory, prefix);
         let dagTemplate = `
 #!/usr/bin/env python3
-from cwl_airflow import CWLDAG, CWLJobDispatcher, CWLJobGatherer
-dag = CWLDAG(cwl_workflow="${base+".cwl"}", dag_id="${prefix}")
-dag.create()
-dag.add(CWLJobDispatcher(dag=dag), to='top')
-dag.add(CWLJobGatherer(dag=dag), to='bottom')
+from cwl_airflow.extensions.cwldag import CWLDAG
+dag = CWLDAG(
+    workflow="${base+".cwl"}",
+    dag_id="${prefix}"
+)
 `;
         fs.writeFile(base+".cwl", JSON.stringify(workflowSerializedData, null, 4), {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", base+".cwl")});
         fs.writeFile(base+".py", dagTemplate, {flag: "wx"}, function(err) {if (err) Log.debug("File already exists", base+".py")});
