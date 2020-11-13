@@ -72,6 +72,12 @@ class DataProxy {
     public static request_file_data(fileId, fields, _id, delimiter='\t', headers=false): Observable<any>|any {
 
         let file = FilesUpload.findOne({_id: fileId});
+
+        if (!file) {
+            Log.error("Failed to find a file by id:", fileId);
+            return of({ error: true, message: `Failed to find a file by id ${fileId}`});
+        }
+
         const req_fields = fields.map((e) => (e.startsWith('$') ? e.slice(1)*1.0 : e*1.0) - 1);
 
         let clean = (x) => {
@@ -105,6 +111,7 @@ Meteor.startup( () => {
             switchMap( ({name, event, _id, fileId, data, delimiter }) =>
                 DataProxy.request_file_data(fileId, data, _id).pipe(map((d) => ({_id, data: d})))
             ),
+            filter((r: any) => !r.data.error),
             mergeMap((d) => DataProxy.master_data_update(d as any)),
             catchError((e) => of({ error: true, message: `Error: ${e}` }))
         )
