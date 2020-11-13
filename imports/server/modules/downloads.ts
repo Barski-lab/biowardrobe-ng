@@ -89,6 +89,7 @@ class AriaDownload {
              * Any complete!
              */
             merge(this._downloadComplete(), this._downloadError(), this._copyComplete$).pipe(
+                tap((data) => Log.debug("Complete download data:", data)),
                 catchError((err) => Log.error("Error encountered while processing results from scheduled download", err))
             )
                 .subscribe(
@@ -311,6 +312,7 @@ class AriaDownload {
                     this._copyComplete$.next({ "downloadId": paired_download._id, "error": stderr });
                 }
             } else {
+                Log.error(`GEO download complete before subject call ${downloadId} paired?:`, paired_download );
 
                 this._copyComplete$.next({ "downloadId": downloadId });
                 if (paired_download) {
