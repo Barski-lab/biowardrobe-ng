@@ -321,6 +321,8 @@ export class AirflowProxy {
          */
         let outputs: any = AirflowProxy.update_results(results, sample);
         AirflowProxy.master_progress_update(run_id, {progress: {progress: 100, }, outputs}).subscribe(r => Log.debug(r));
+
+        return next();
     }
 
     /**
