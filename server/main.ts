@@ -27,7 +27,13 @@ Meteor.startup(() => {
     }
 
     if(Meteor.settings['cors_package']) {
-        WebApp.rawConnectHandlers.use(cors());
+        let corsOptions = {
+            origin: true,
+            credentials: true,
+            preflightContinue: true,
+            optionsSuccessStatus: 204  // some legacy browsers (IE11, various SmartTVs) choke on 204
+        }
+        WebApp.rawConnectHandlers.use(cors(corsOptions));
     }
 
     if(Meteor.settings['SSL']) {
