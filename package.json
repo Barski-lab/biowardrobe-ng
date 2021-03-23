@@ -7,7 +7,7 @@
   "postinstall": "typings i",
   "scripts": {
     "meteor": "ROOT_URL= MONGO1_URL=mongodb://localhost:27017/biowardrobe-ng meteor run --port 3030 --settings ./private/settings.json",
-    "debug": "AOT=1 ROLLUP=0 ROOT_URL=http://localhost:3030/ MONGO_URL=mongodb://localhost:27017/biowardrobe-ng meteor --port 3030 --settings ./.private/settings.json --raw-logs |./node_modules/bunyan/bin/bunyan",
+    "debug": "AOT=1 ROLLUP=0 ROOT_URL=http://localhost:3030/ MONGO_URL=mongodb://localhost:27017/biowardrobe-ng meteor --port 3030 --settings ./private/settings.json --raw-logs |./node_modules/bunyan/bin/bunyan",
     "build": "AOT=1 ROLLUP=0 meteor build ../output && scp ../output/biowardrobe-ng.tar.gz devel:/meteor/biowardrobe-ng/",
     "build:pack": "./post_build.sh",
     "build:pack1": "AOT=1 ROLLUP=0 meteor build ../output && ./post_build.sh",

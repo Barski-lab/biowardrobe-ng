@@ -7,29 +7,17 @@ import { BWAuthComponentsModule } from './components/bwauthcomponents.module';
 import { BWDirectivesModule, BWAccountService, LoggedInGuard, LoggedInAdminGuard } from '../lib';
 
 import { BWLogin }    from './login/login';
-import { BWLogout }   from './logout/logout';
-import { BWForgot }   from './forgot/forgot';
-import { BWReset }    from './reset/reset';
 import { BWLoggedIn } from './loggedin/loggedin';
-import { BWEnroll }   from './enroll/enroll';
 
 
 @NgModule({
     declarations: [
         BWLogin,
-        BWLogout,
-        BWLoggedIn,
-        BWForgot,
-        BWReset,
-        BWEnroll
+        BWLoggedIn
     ],
     exports: [
         BWLogin,
-        BWLogout,
-        BWLoggedIn,
-        BWForgot,
-        BWReset,
-        BWEnroll
+        BWLoggedIn
     ],
     imports: [
         CommonModule,
