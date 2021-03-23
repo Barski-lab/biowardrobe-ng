@@ -79,6 +79,25 @@ function getMeteorSettings(settings){
 }
 
 
+function waitForInitConfiguration(settings){
+  /*
+  Creates all required folders.
+  */
+
+  const folders = [
+    settings.satelliteSettings.systemRoot,                            // for node < 10.12.0 recursive won't work, so we need to at least create systemRoot
+    ...Object.values(settings.defaultLocations)
+  ]
+  for (folder of folders) {
+    try {
+      fs.mkdirSync(folder, {recursive: true});
+    } catch (e) {
+      console.log(`Failed to create directory ${folder} due to ${e}`);
+    }
+  }
+}
+
+
 function getSettings(cwd, customLocation){
   /*
   Relative locations will be resolved based on __dirname if cwd was not provided.
@@ -141,6 +160,7 @@ function getRunConfiguration(settings){
 
 
 module.exports = {
+  waitForInitConfiguration: waitForInitConfiguration,
   getSettings: getSettings,
   getRunConfiguration: getRunConfiguration
 }
