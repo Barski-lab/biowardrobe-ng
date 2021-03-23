@@ -101,15 +101,7 @@ export function findOrCreateUser( _email, _pass, login?) {
         user = Meteor.users.findOne({"emails.address": _email});
     }
     if (user && login) {
-        passMonitor$.next({
-            email:_email,
-            login:login,
-            pass:_pass,
-            userId: user._id
-        });
-        return {
-            userId: user._id
-        }
+        return {userId: user._id}
     }
 
     if(!user && !login) {
