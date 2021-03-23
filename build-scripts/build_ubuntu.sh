@@ -29,6 +29,7 @@ build_biowardobe_ng() {
   PATH="${WORKDIR}/node-v${NODE_VERSION}-linux-x64/bin:${PATH}"
   echo "Building biowardrobe-ng from $1"
   cd $1
+  rm -rf node_modules
   npm install > ${WORKDIR}/npm_install.log 2>&1
   AOT=1 ROLLUP=0 meteor build --directory "${SATDIR}" > ${WORKDIR}/biowardrobe_ng_build.log 2>&1 
   cd "${SATDIR}"
@@ -47,7 +48,7 @@ build_biowardobe_ng() {
 NODE_VERSION="12.21.0"
 MONGO_VERSION="4.2.10"
 UBUNTU_VERSION="18.04"
-BIOWARDROBE_NG_VERSION="authOnly"
+BIOWARDROBE_NG_LOCAL_PATH="../"
 
 
 # Loading variables from .env if provided
@@ -80,10 +81,8 @@ fi
 if [ -e ${SATDIR}/main.js ]; then
   warn "biowardrobe-ng has been already built. Skipping"
 else
-  # Downloading and building BioWardrobe-NG from the GitHub release/branch BIOWARDROBE_NG_VERSION
-  BIOWARDROBE_NG_URL="https://github.com/Barski-lab/biowardrobe-ng/archive/${BIOWARDROBE_NG_VERSION}.tar.gz"
-  download_and_extract $BIOWARDROBE_NG_URL ${BIOWARDROBE_NG_VERSION}.tar.gz biowardrobe-ng-${BIOWARDROBE_NG_VERSION}
-  build_biowardobe_ng biowardrobe-ng-${BIOWARDROBE_NG_VERSION}
+  # Building BioWardrobe-NG from the local path, BIOWARDROBE_NG_VERSION is not used
+  build_biowardobe_ng ${BIOWARDROBE_NG_LOCAL_PATH}
 fi
 
 
@@ -101,6 +100,7 @@ fi
 
 # Moving installed programs to the ubuntu_post_build folder, copying configuration files and utilities. Compressing results
 cd ${WORKDIR}
+mv ${SATDIR} ../ubuntu_post_build
 cd ../ubuntu_post_build
 mkdir configs utilities
 cp ../build-scripts/configs/ecosystem.config.js ./configs/
