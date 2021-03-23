@@ -123,25 +123,6 @@ export function findOrCreateUser( _email, _pass, login?) {
     return Accounts['_checkPassword'](user, _pass);
 }
 
-/**
- * Read array of extra_users (array of emails) from Meteor.settings and if current email
- * is not assigned with any of the existent user, create the new user with current email
- * and empty password. User cannot login until he sets his password by following the link
- * sent to his email by sendEnrollmentEmail function
- */
-export function setExtraUsers (){
-    if(Meteor.settings['extra_users'] && Meteor.settings['extra_users'].length > 0) {
-        Meteor.settings['extra_users'].forEach( (email)=> {
-            if (!Meteor.users.findOne({"emails.address": email.toLowerCase()})) {
-                let userId = Accounts.createUser({
-                    email: email.toLowerCase(),
-                });
-                Accounts.sendEnrollmentEmail(userId);
-            }
-        });
-    }
-}
-
 Accounts.onLogin(function (login) {
     let {user,methodArguments, ...other} = login;
     Log.debug('onLogin:', login.user._id, other);
@@ -156,25 +137,3 @@ Meteor.startup(() => {
         process.env.MAIL_URL = Meteor.settings.email.url;
     }
 });
-
-export function configAccounts(){
-    Accounts.emailTemplates.siteName = Meteor.settings['name'];
-    Accounts.emailTemplates.from = Meteor.settings.email.from;
-
-    Accounts['urls'] = {...Accounts['urls'],
-        resetPassword: function (token) {
-            Log.debug('resetPassword: ' + Meteor.settings.base_url+"reset/" + token);
-            return Meteor.settings.base_url+"reset/" + token;
-        },
-        enrollAccount: function (token) {
-            Log.debug('enrollAccount: ' + Meteor.settings.base_url+"enroll/" + token);
-            return Meteor.settings.base_url+"enroll/" + token;
-        }
-    };
-
-    Accounts.config({
-            sendVerificationEmail: true,       // TODO maybe we don't need it, if we use only enrollment email
-            forbidClientAccountCreation: true,
-            loginExpirationInDays: 7,
-            ...Meteor.settings['accounts']});
-}
