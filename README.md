@@ -16,7 +16,10 @@
    ```bash
    curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
    sudo apt-get install nodejs
+   mkdir ~/.npm-global
+   npm config set prefix '~/.npm-global'
+   export PATH=~/.npm-global/bin:$PATH
    tar xzf biowardrobe-ng.tar.gz
-   npm install pm2
-   ./node_modules/pm2/bin/pm2 start ./configs/ecosystem.config.js
+   npm install -g pm2
+   pm2 start ./configs/ecosystem.config.js
    ```
