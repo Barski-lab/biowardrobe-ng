@@ -8,16 +8,19 @@ import { BWDirectivesModule, BWAccountService, LoggedInGuard, LoggedInAdminGuard
 
 import { BWLogin }    from './login/login';
 import { BWLoggedIn } from './loggedin/loggedin';
+import { BWLogout }   from './logout/logout';
 
 
 @NgModule({
     declarations: [
         BWLogin,
-        BWLoggedIn
+        BWLoggedIn,
+        BWLogout
     ],
     exports: [
         BWLogin,
-        BWLoggedIn
+        BWLoggedIn,
+        BWLogout
     ],
     imports: [
         CommonModule,
