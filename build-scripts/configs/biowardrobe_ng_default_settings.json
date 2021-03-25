@@ -1,6 +1,6 @@
 {
     "defaultLocations": {
-        "systemRoot": "./biowardrobe_ng"
+        "systemRoot": "./biowardrobe_ng_oauth"
     },
     "networkSettings": {
         "proxy": "",
@@ -8,7 +8,7 @@
     },
     "mongoSettings": {
         "port": 27017,
-        "collection": "biowardrobe_ng"
+        "collection": "biowardrobe_ng_oauth"
     },    
     "meteorSettings": {
         "name": "biowardrobe_ng",
@@ -16,10 +16,6 @@
         "port": 3069,
         "logLevel": "debug",
         "cors_package": true,
-        "email": {
-            "url": "",
-            "from": ""
-        },
         "public":{
             "staleSessionInactivityTimeout": 300000,
             "staleSessionHeartbeatInterval": 120000,
