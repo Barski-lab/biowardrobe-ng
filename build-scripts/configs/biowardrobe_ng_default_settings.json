@@ -1,22 +1,19 @@
 {
     "defaultLocations": {
-        "mongodb": "mongodb",
-        "satellite": "satellite"
+        "systemRoot": "./biowardrobe_ng"
     },
-    "satelliteSettings": {
-        "baseUrl": "http://localhost:3069/",
-        "port": 3069,
-        "systemRoot": "./biowardrobe_ng",
-        "mongoPort": 27017,
-        "mongoCollection": "biowardrobe-ng",
-        "sslPort": 3070,
-        "sslCert": "",
-        "sslKey": "",
+    "networkSettings": {
         "proxy": "",
         "noProxy": ""
     },
+    "mongoSettings": {
+        "port": 27017,
+        "collection": "biowardrobe_ng"
+    },    
     "meteorSettings": {
-        "name": "biowardrobe-ng",
+        "name": "biowardrobe_ng",
+        "base_url": "http://localhost:3069/",
+        "port": 3069,
         "logLevel": "debug",
         "cors_package": true,
         "email": {
@@ -34,6 +31,11 @@
             "sendVerificationEmail": false,
             "forbidClientAccountCreation": true,
             "loginExpirationInDays": 7
+        },
+        "SSL":{
+            "key": "",
+            "cert": "",
+            "port": ""
         },
         "ldap": {},
         "oauth2server": {}

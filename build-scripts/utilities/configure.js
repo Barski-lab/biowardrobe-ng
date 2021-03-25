@@ -14,78 +14,50 @@ function loadSettings(settings_locations){
       console.log(`Failed to load settings from ${location}`);
     }
   };
-  settings.satelliteSettings.systemRoot = path.resolve(os.homedir(), settings.satelliteSettings.systemRoot);
-  settings.defaultLocations = getDefaultLocations(settings);
+  settings.defaultLocations.systemRoot = path.resolve(os.homedir(), settings.defaultLocations.systemRoot);
+  settings.defaultLocations.mongodb = path.resolve(settings.defaultLocations.systemRoot, "mongodb");
+  settings.meteorSettings.logFile = path.resolve(settings.defaultLocations.systemRoot, 'biowardrobe_ng_service.log')
   return settings;
-}
-
-
-function getDefaultLocations(settings){
-  const defaultLocations = {};
-  for (const [key, value] of Object.entries(settings.defaultLocations)) {
-    defaultLocations[key] = path.resolve(settings.satelliteSettings.systemRoot, value)
-  };
-  return defaultLocations
 }
 
 
 function getMongodArgs(settings){
   const mongodArgs = [
     '--bind_ip', '127.0.0.1',
-    '--port', settings.satelliteSettings.mongoPort,
+    '--port', settings.mongoSettings.port,
     '--dbpath', settings.defaultLocations.mongodb
   ];
   return mongodArgs
 }
 
 
-function getSatelliteEnvVar(settings){
-  let satelliteEnvVar = {
+function getBiowardrobeNgEnvVar(settings){
+  let biowardrobeNgEnvVar = {
     PATH: settings.executables.pathEnvVar,
-    MONGO_URL: `mongodb://localhost:${settings.satelliteSettings.mongoPort}/${settings.satelliteSettings.mongoCollection}`,
-    ROOT_URL: settings.satelliteSettings.baseUrl,
-    PORT: settings.satelliteSettings.port,
-    // we need to re-evaluate meteorSettings, because on macOS rcServerToken was not loaded from the config file and therefore was not present when we run getSettings
-    METEOR_SETTINGS: getMeteorSettings(settings),
+    MONGO_URL: `mongodb://localhost:${settings.mongoSettings.port}/${settings.mongoSettings.collection}`,
+    ROOT_URL: settings.meteorSettings.base_url,
+    PORT: settings.meteorSettings.port,
+    METEOR_SETTINGS: settings.meteorSettings,
     NODE_OPTIONS: '--trace-warnings --pending-deprecation'
   };
-  if (settings.satelliteSettings.proxy) {
-    satelliteEnvVar = {
-      ...satelliteEnvVar,
-      https_proxy: settings.satelliteSettings.proxy,
-      http_proxy: settings.satelliteSettings.proxy,
-      no_proxy: settings.satelliteSettings.noProxy || ''
+  if (settings.networkSettings.proxy) {
+    biowardrobeNgEnvVar = {
+      ...biowardrobeNgEnvVar,
+      https_proxy: settings.networkSettings.proxy,
+      http_proxy: settings.networkSettings.proxy,
+      no_proxy: settings.networkSettings.noProxy || ''
     };
   };
-  return satelliteEnvVar
+  return biowardrobeNgEnvVar
 }
 
 
-function getMeteorSettings(settings){
-  const meteorSettings = {
-    ...settings.meteorSettings,
-    base_url: settings.satelliteSettings.baseUrl,
-    systemRoot: settings.satelliteSettings.systemRoot,
-    logFile: path.resolve(settings.defaultLocations.satellite, 'satellite-service.log')
-  };
-  if (settings.satelliteSettings.sslCert && settings.satelliteSettings.sslKey && settings.satelliteSettings.sslPort) {
-    meteorSettings['SSL'] = {
-      'key': settings.satelliteSettings.sslKey,
-      'cert': settings.satelliteSettings.sslCert,
-      'port': settings.satelliteSettings.sslPort
-    };
-  }
-  return meteorSettings;
-}
-
-
-function waitForInitConfiguration(settings){
+function createFolders(settings){
   /*
   Creates all required folders.
   */
 
   const folders = [
-    settings.satelliteSettings.systemRoot,                            // for node < 10.12.0 recursive won't work, so we need to at least create systemRoot
     ...Object.values(settings.defaultLocations)
   ]
   for (folder of folders) {
@@ -110,7 +82,7 @@ function getSettings(cwd, customLocation){
     process.env.BIOWARDROBE_NG_SETTINGS,
     path.resolve(cwd, '../../biowardrobe_ng_settings.json'),
     path.resolve(os.homedir(), './.config/biowardrobe_ng/biowardrobe_ng_settings.json'),
-    path.resolve(cwd, '../configs/default_settings.json')                  // default settings should be always present
+    path.resolve(cwd, '../configs/biowardrobe_ng_default_settings.json')                  // default settings should be always present
   ];
 
   if (customLocation){
@@ -121,9 +93,9 @@ function getSettings(cwd, customLocation){
   const settings = {
     ...loadSettings(settings_locations),
     executables: {
-      mongod: path.resolve(cwd, '../satellite/bin/mongod'),
-      startSatellite: path.resolve(cwd, '../satellite/main.js'),
-      pathEnvVar: `${ path.resolve(cwd, '../satellite/bin') }:/usr/bin:/bin:/usr/local/bin`
+      mongod: path.resolve(cwd, '../services/bin/mongod'),
+      biowardrobeNg: path.resolve(cwd, '../services/main.js'),
+      pathEnvVar: `${ path.resolve(cwd, '../services/bin') }:/usr/bin:/bin:/usr/local/bin`
     }
   }
   
@@ -144,13 +116,13 @@ function getRunConfiguration(settings){
         cwd: settings.defaultLocations.mongodb
       },
       {
-        name: 'satellite',
-        script: settings.executables.startSatellite,
+        name: 'biowardrobe_ng',
+        script: settings.executables.biowardrobeNg,
         interpreter: 'node',
         watch: false,
         exec_mode: 'fork_mode',
-        cwd: settings.defaultLocations.satellite,
-        env: getSatelliteEnvVar(settings)
+        cwd: settings.defaultLocations.systemRoot,
+        env: getBiowardrobeNgEnvVar(settings)
       }
     ]
   };
@@ -160,7 +132,7 @@ function getRunConfiguration(settings){
 
 
 module.exports = {
-  waitForInitConfiguration: waitForInitConfiguration,
   getSettings: getSettings,
+  createFolders: createFolders,
   getRunConfiguration: getRunConfiguration
 }

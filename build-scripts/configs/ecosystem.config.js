@@ -1,6 +1,6 @@
-const { getSettings, waitForInitConfiguration, getRunConfiguration } = require('../utilities/configure');
+const { getSettings, createFolders, getRunConfiguration } = require('../utilities/configure');
 
 
 const settings = getSettings();
-waitForInitConfiguration(settings);
+createFolders(settings);
 module.exports = getRunConfiguration(settings);
