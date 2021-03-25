@@ -30,7 +30,7 @@ Meteor.startup(() => {
         WebApp.rawConnectHandlers.use(cors(corsOptions));
     }
 
-    if(Meteor.settings['SSL']) {
+    if(Meteor.settings['SSL'] && Meteor.settings['SSL'].key && Meteor.settings['SSL'].cert && Meteor.settings['SSL'].port) {
 
         const [,, host, targetPort] = Meteor.absoluteUrl().match(/([a-zA-Z]+):\/\/([\-\w\.]+)(?:\:(\d{0,5}))?/);
 
