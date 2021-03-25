@@ -10,6 +10,7 @@ echo "Pack BioWardrobe-NG from ${WORKING_DIR} in dockerized Ubuntu $UBUNTU_VERSI
 docker run --rm -it \
     --volume ${WORKING_DIR}:/tmp/ubuntu \
     --workdir /tmp/ubuntu/build-scripts \
+    --env UBUNTU_VERSION=${UBUNTU_VERSION} \
     --env NODE_VERSION=${NODE_VERSION} \
     --env MONGO_VERSION=${MONGO_VERSION} \
     ubuntu:${UBUNTU_VERSION} \
