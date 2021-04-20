@@ -1,7 +1,7 @@
 {
   "name": "biowardrobe-ng",
   "homepage": "biowardrobe.com",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "os" : [ "darwin", "linux" ],
   "private": true,
   "postinstall": "typings i",
