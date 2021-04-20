@@ -1,48 +1,83 @@
 # BioWardrobe NG
 [![Build Status](https://travis-ci.org/Barski-lab/biowardrobe-ng.svg?branch=master)](https://travis-ci.org/Barski-lab/biowardrobe-ng)
 
+## Ubuntu
 
-## Download/Copy files based on the protocol
-
-1. Add `Aria2` configuration to the `settings.json` configuration file. If absent, `Aria2` and therefore any download/copy mechanism won't be used. Set additional security options if necessary.
-
-   ```yaml
-      "download": {
-        "aria2": {
-          "host": "localhost",
-          "port": 6800,
-          "secure": false,
-          "secret": "secret_key",
-          "path": "/jsonrpc"
-        }
-      }
-    ```
-
-2. Add new remote to the `remotes` section of the `settings.json` configuration file for processing direct links to the input files
-
-   ```yaml
-      "directurl": {
-        "caption": "Direct URL",
-        "type": "files",
-        "protocol": ["https"],          # can be String also
-        "refreshSessionInterval": 180
-      }
-   ```
-
-3. Run `Aria2` server following the example. Set additional security options if necessary.
-
+**To build** relocatable `biowardrobe-ng.tar.gz` that can be run with PM2 on Ubuntu 18.04 run the following command.
    ```bash
-      aria2c --enable-rpc --rpc-listen-all=false --auto-file-renaming=false --rpc-listen-port=6800 --console-log-level=debug --rpc-secret="secret_key"
+   cd build-scripts
+   ./pack_ubuntu.sh
    ```
 
-4. Input should look the following way
-   ```yaml
-        "fastq_file": {
-            "class": "File",
-            "location": "PROTOCOL:///input.fastq.gz",             # PROTOCOL defines the remote module to use
-            "token": "token://cd62d3d9587e44d9a537c1444c903b59"
+**To run** relocatable `biowardrobe-ng.tar.gz` on clean Ubuntu 18.04 run the following commands.
+   ```bash
+   curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
+   sudo apt-get install nodejs
+   mkdir ~/.npm-global
+   npm config set prefix '~/.npm-global'
+   export PATH=~/.npm-global/bin:$PATH
+   npm install -g pm2
+   cd ubuntu_post_build
+   tar xzf biowardrobe-ng.tar.gz
+   pm2 start ./configs/ecosystem.config.js
+   ```
+
+File with the **default configuration** `biowardrobe_ng_default_settings.json`
+```json
+{
+    "defaultLocations": {
+        "systemRoot": "./biowardrobe_ng_oauth"
+    },
+    "networkSettings": {
+        "proxy": "",
+        "noProxy": ""
+    },
+    "mongoSettings": {
+        "port": 27017,
+        "collection": "biowardrobe_ng_oauth"
+    },    
+    "meteorSettings": {
+        "name": "biowardrobe_ng",
+        "base_url": "http://localhost:3069/",
+        "port": 3069,
+        "logLevel": "debug",
+        "cors_package": true,
+        "public":{
+            "staleSessionInactivityTimeout": 300000,
+            "staleSessionHeartbeatInterval": 120000,
+            "staleSessionPurgeInterval": 60000,
+            "staleSessionForceLogout": true,
+            "staleSessionActivityEvents": "mousemove click keydown"
+        }, 
+        "accounts":{
+            "sendVerificationEmail": false,
+            "forbidClientAccountCreation": true,
+            "loginExpirationInDays": 7
         },
-   ```
+        "SSL":{
+            "key": "",
+            "cert": "",
+            "port": ""
+        },
+        "ldap": {},
+        "oauth2server": {}
+    }
+}
 
-   Decoded token should have at least three mandatory fields: `projectId`, `userId`, `fileId`.
-   Make sure to set protocol to `files` for the remote module to process the copying from the local directory (in `settings.json`).
+```
+
+**After updating** to the refactored version of BioWardrobe-NG the old `services.scidapsatellite` field in the `users` collection should be removed. Otherwise, users will get **Service scidapsatellite already registered [403]** error when trying to log in. To remove `services.scidapsatellite` do the following steps
+1. Backup `scidap` database
+    ```bash
+    mongodump --archive --db scidap |7z a -si dump.7z
+    ```
+2. Run `mongo` shell and execute
+    ```mongo
+    db.users.find({"services.scidapsatellite": { $exists: true }})
+    db.users.updateMany({}, {$unset: {"services.scidapsatellite": ""}})
+    db.users.find({"services.scidapsatellite": { $exists: true }})
+    ```
+3. If something went wrong, restore from backup
+    ```bash
+    7z e -so dump.7z |mongorestore --archive --drop
+    ```

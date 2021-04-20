@@ -1,22 +1,16 @@
 import { Meteor } from 'meteor/meteor';
 
 import '../imports/server';
-import { setExtraUsers, configAccounts } from '../imports/server/modules/accounts'
 import { Log } from '../imports/server/modules/logger';
 
 const cors = require('cors');
 const fs = require('fs');
 const httpProxy = require('http-proxy');
 
+
 Meteor.startup(() => {
 
-    // Throttle.setMethodsAllowed(false);            // Disable client-side methods
-    // if(Meteor.settings['logLevel'] == "debug") {
-    //     Throttle.setDebugMode(true);              // Show debug messages
-    // }
-
-
-    if(Meteor.settings['cors']) {
+    if(Meteor.settings["cors"]) {
         WebApp.rawConnectHandlers.use(function (req, res, next) {
             res.setHeader("Access-Control-Allow-Origin", "*");
             res.setHeader('Access-Control-Allow-Headers', "*");
@@ -26,7 +20,7 @@ Meteor.startup(() => {
         });
     }
 
-    if(Meteor.settings['cors_package']) {
+    if(Meteor.settings["cors_package"]) {
         let corsOptions = {
             origin: true,
             credentials: true,
@@ -36,7 +30,7 @@ Meteor.startup(() => {
         WebApp.rawConnectHandlers.use(cors(corsOptions));
     }
 
-    if(Meteor.settings['SSL']) {
+    if(Meteor.settings['SSL'] && Meteor.settings['SSL'].key && Meteor.settings['SSL'].cert && Meteor.settings['SSL'].port) {
 
         const [,, host, targetPort] = Meteor.absoluteUrl().match(/([a-zA-Z]+):\/\/([\-\w\.]+)(?:\:(\d{0,5}))?/);
 
@@ -60,10 +54,4 @@ Meteor.startup(() => {
         });
     }
 
-    configAccounts();
-    setExtraUsers();
-
 });
-
-
-

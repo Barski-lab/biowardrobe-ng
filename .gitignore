@@ -4,3 +4,5 @@ node_modules/
 ._settings.json
 .settings.json.swp
 .idea
+build_ubuntu
+ubuntu_post_build
