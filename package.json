@@ -45,7 +45,7 @@
     "cors": "^2.8.5",
     "cwlts": "^1.15.32",
     "es6-shim": "^0.35.5",
-    "express": "^4.14.0",
+    "express": "^4.17.3",
     "express-session": "^1.14.2",
     "fast-csv": "^2.4.1",
     "htmlparser2": "^3.9.2",
