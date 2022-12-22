@@ -51,7 +51,7 @@
     "htmlparser2": "^3.9.2",
     "http-proxy": "^1.18.1",
     "js-yaml": "3.13.1",
-    "jsonwebtoken": "^8.4.0",
+    "jsonwebtoken": "^9.0.0",
     "ldapjs": "^1.0.2",
     "meteor-node-stubs": "^0.4.1",
     "mime": "^2.4.3",
